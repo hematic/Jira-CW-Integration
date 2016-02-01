@@ -36,8 +36,6 @@ Function Get-CWTicket
     [string]$BaseUri     = "$CWServerRoot" + "v4_6_Release/apis/3.0/service/tickets/$ticketID"
     [string]$Accept      = "application/vnd.connectwise.com+json; version=v2015_3"
     [string]$ContentType = "application/json"
-    [string]$Authstring  = $CWInfo.company + '+' + $CWCredentials.publickey + ':' + $CWCredentials.privatekey
-    $encodedAuth         = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(($Authstring)));
 
     $Headers=@{
         'X-cw-overridessl' = "True"
@@ -108,8 +106,6 @@ Function Get-CWTimeEntries
     [string]$BaseUri     = "$CWServerRoot" + "v4_6_Release/apis/3.0/service/tickets/$ticketID/timeentries"
     [string]$Accept      = "application/vnd.connectwise.com+json; version=v2015_3"
     [string]$ContentType = "application/json"
-    [string]$Authstring  = $CWInfo.company + '+' + $CWCredentials.publickey + ':' + $CWCredentials.privatekey
-    $encodedAuth         = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(($Authstring)));
 
     $Headers=@{
         'X-cw-overridessl' = "True"
@@ -172,8 +168,6 @@ Function Get-TimeEntryDetails
     [string]$BaseUri     = "$CWServerRoot" + "v4_6_Release/apis/3.0/Time/Entries/$TimeEntryID"
     [string]$Accept      = "application/vnd.connectwise.com+json; version=v2015_3"
     [string]$ContentType = "application/json"
-    [string]$Authstring  = $CWInfo.company + '+' + $CWCredentials.publickey + ':' + $CWCredentials.privatekey
-    $encodedAuth         = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(($Authstring)));
 
     $Headers=@{
         'X-cw-overridessl' = "True"
@@ -236,10 +230,8 @@ Function Get-CWMember
         [string]$BaseUri     = "$CWServerRoot" + "v4_6_Release/apis/3.0/system/members"
         [string]$Accept      = "application/vnd.connectwise.com+json; version=v2015_3"
         [string]$ContentType = "application/json"
-        [string]$Authstring  = $CWInfo.company + '+' + $CWCredentials.publickey + ':' + $CWCredentials.privatekey
-        $encodedAuth         = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(($Authstring)));
 
-                    $Headers=@{
+        $Headers=@{
         'X-cw-overridessl' = "True"
         "Authorization"="Basic $encodedAuth"
         }
@@ -315,10 +307,8 @@ Function Get-CWContact
         [string]$BaseUri     = "$CWServerRoot" + "v4_6_Release/apis/3.0/company/contacts"
         [string]$Accept      = "application/vnd.connectwise.com+json; version=v2015_3"
         [string]$ContentType = "application/json"
-        [string]$Authstring  = $CWInfo.company + '+' + $CWCredentials.publickey + ':' + $CWCredentials.privatekey
-        $encodedAuth         = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(($Authstring)));
 
-                    $Headers=@{
+        $Headers=@{
         'X-cw-overridessl' = "True"
         "Authorization"="Basic $encodedAuth"
         }
@@ -382,6 +372,7 @@ function Get-CWKeys
         [string]$Accept      = "application/vnd.connectwise.com+json; version=v2015_3"
         [string]$ContentType = "application/json"
         [string]$Authstring  = $CWInfo.company + '+' + $CWInfo.user + ':' + $CWInfo.password
+        
 
         #Convert the user and pass (aka public and private key) to base64 encoding
         $encodedAuth = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(($Authstring)));
@@ -445,9 +436,7 @@ Function Get-CWBoardInfo
         [string]$BaseUri     = "$CWServerRoot" + "v4_6_Release/apis/3.0/service/boards"
         [string]$Accept      = "application/vnd.connectwise.com+json; version=v2015_3"
         [string]$ContentType = "application/json"
-        [string]$Authstring  = $CWInfo.company + '+' + $CWCredentials.publickey + ':' + $CWCredentials.privatekey
-        $encodedAuth         = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(($Authstring)));
-
+ 
         $Headers=@{
         'X-cw-overridessl' = "True"
         "Authorization"="Basic $encodedAuth"
@@ -526,8 +515,6 @@ function New-CWTicket
         [string]$BaseUri     = "$CWServerRoot" + "v4_6_Release/apis/3.0/service/tickets"
         [string]$Accept      = "application/vnd.connectwise.com+json; version=v2015_3"
         [string]$ContentType = "application/json"
-        [string]$Authstring  = $CWInfo.company + '+' + $CWCredentials.publickey + ':' + $CWCredentials.privatekey
-        $encodedAuth = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(($Authstring)));
     }
 
     Process
@@ -609,8 +596,6 @@ Function Close-CWTicket
         [string]$BaseUri     = "$CWServerRoot" + "v4_6_Release/apis/3.0/service/tickets/$ticketID"
         [string]$Accept      = "application/vnd.connectwise.com+json; version=v2015_3"
         [string]$ContentType = "application/json"
-        [string]$Authstring  = $CWInfo.company + '+' + $CWCredentials.publickey + ':' + $CWCredentials.privatekey
-        $encodedAuth         = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(($Authstring)));
 
         $Headers=@{
             'X-cw-overridessl' = "True"
@@ -695,8 +680,6 @@ function New-CWTimeEntry
         [string]$BaseUri     = "$CWServerRoot" + "v4_6_Release/apis/3.0/time/entries"
         [string]$Accept      = "application/vnd.connectwise.com+json; version=v2015_3"
         [string]$ContentType = "application/json"
-        [string]$Authstring  = $CWInfo.company + '+' + $CWCredentials.publickey + ':' + $CWCredentials.privatekey
-        $encodedAuth         = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(($Authstring)));
     }
 
     Process

@@ -1,4 +1,4 @@
-﻿$ModuleParentDirectory = 'C:\Users\pmarshall\Dropbox\Work\Projects\Jira Integration\New\'
+﻿$ModuleParentDirectory = 'C:\Users\pmarshall\Documents\GitHub\Jira-CW-Integration\'
 Import-Module -Name $($ModuleParentDirectory + "ConnectWise.psm1") -force
 Import-Module -Name $($ModuleParentDirectory + "DataManipulation.psm1") -force
 Import-Module -Name $($ModuleParentDirectory + "Jira.psm1") -force
@@ -27,10 +27,12 @@ $JiraCredentials = Set-JiraCreds
 
 $Global:CWInfo = New-Object PSObject -Property @{
 Company = 'connectwise'
-User = 'jira'
-Password = 'jira'
+PublicKey = '4hc35v3aNRTjib9W'
+PrivateKey = 'yLubF4Kfz4gWKBzU'
 }
-$CWCredentials = Get-CWKeys -ImpersonationMember 'Jira'
+
+[string]$Authstring  = $CWInfo.company + '+' + $CWInfo.publickey + ':' + $CWInfo.privatekey
+$encodedAuth = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(($Authstring)));
 
 #Get a list of all the boards we need to check and insert them into the DB.
 $ListofBoards = Get-BoardList
