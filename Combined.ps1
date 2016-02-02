@@ -71,6 +71,27 @@ Foreach($Issue in $objSprintIssues)
     #Close the ticket in CW if its closed in Jira
     If($Issue.status -eq 'Closed')
     {
-        $CloseIt = Close-CWTicket -TicketID $($Issue.CWTicketID)
+        Write-Output "Jira Issue is closed."
+        Write-Output "Checking if the CWTicket is closed."
+
+        $ISClosed = Get-cwticket -TicketID $($Issue.CWTicketID)
+
+        If($ISClosed.status.name -eq 'Completed Contact Confirmed')
+        {
+            Write-Output "CW Ticket #$($Issue.CWTicketID) is already closed."
+        }
+
+        Else
+        {
+            $CloseIt = Close-CWTicket -TicketID $($Issue.CWTicketID)
+            If ($CloseIt.status.name -eq 'Completed Contact Confirmed')
+            {
+                Write-Output "CW Ticket #$($Issue.CWTicketID) has been closed."
+            }
+            Else
+            {
+                Write-Output "Failed to close CW Ticket #$($Issue.CWTicketID)"
+            }
+        }
     }
 }                                                                                                                                                                                         
