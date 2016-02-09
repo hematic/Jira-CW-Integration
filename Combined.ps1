@@ -16,7 +16,6 @@ $VerbosePreference = 'SilentlyContinue'
 [String]$CWServerRoot = "https://cw.connectwise.net/"
 [String]$JiraServerRoot = "https://jira.labtechsoftware.com/"
 [String]$ImpersonationMember = 'jira'
-[String]$MySQlPass = 'wowpass3'
 
 #Credentials
 $Global:JiraInfo = New-Object PSObject -Property @{
