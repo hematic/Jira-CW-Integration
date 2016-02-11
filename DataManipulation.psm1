@@ -43,72 +43,6 @@ Function Update-CWTicketValue
 
 }
 
-Function New-WorklogInsertStatement
-{
-
-	<#
-	.SYNOPSIS
-		Creates an insert statement for the 'jira_cw_worklogs' table.
-	
-	.DESCRIPTION
-        An object containing information about a worklog gets passed
-        to this function and it creates an insert statement for the 
-        'jira_cw_worklogs' table and then calls the Add-SQLInsert function.
-	
-	.PARAMETER WorkLog
-		The object containing worklog information to be inserted.
-
-	.PARAMETER IssueID
-		The numerical ID assigned to the issue this worklog is a part of.
-
-	.NOTES
-		Some of this data has to be specially formatted to get into the
-        mysql database properly. All Date/Time objects must be converted
-        from ISo-8601 format to MySQL Date Literals.
-	
-	.EXAMPLE
-        Create-IssueInsertStatement $Issue
-	#>
-
-	[CmdLetBinding()]
-	Param
-		(
-		[Parameter(Mandatory = $True)]
-		[Object]$Worklog,
-        [Parameter(Mandatory = $True)]
-        [Int]$IssueID
-
-	)
-
-    $ID = $Worklog.id
-    $Author = $Worklog.author.name
-    $Comment = Format-SanitizedString $Worklog.comment
-    $Created = Get-Date $($Worklog.created) -Format "yyyy-MM-dd HH:mm:ss"
-    $Updated = Get-Date $($Worklog.updated) -Format "yyyy-MM-dd HH:mm:ss"
-    $Started = Get-Date $($Worklog.started) -Format "yyyy-MM-dd HH:mm:ss"
-    $TimeSpent = $Worklog.timespent
-    $TimeSpentSeconds = $Worklog.timespentseconds
-
-    $Columns = @"
-USE jiraintegration;
-Insert IGNORE into `jira_cw_worklogs`
-(`ID`,
-`IssueID`,
-`Author`,
-`Comment`,
-`Created`,
-`Updated`,
-`Started`,
-`TimeSpent`,
-`TimeSpentSeconds`) VALUES 
-('{0}','{1}','{2}','{3}','{4}','{5}','{6}','{7}','{8}');
-"@
- 
-    $MySQLInsert = $Columns -f $ID, $IssueID, $Author, $Comment, $Created, $Updated, $Started, $TimeSpent, $TimeSpentSeconds
-    Add-SQLInsert $MySQLInsert
-
-}
-
 Function Format-SanitizedString
 {
 	
@@ -217,6 +151,54 @@ Function Format-Sprintissues
         }
 }
 
+Function Format-Project
+{
+	<#
+	.SYNOPSIS
+		Creates an object from a Jira issue.
+	
+	.DESCRIPTION
+        A issue or array of issues are passed to
+        the function and it parses out the data we
+        need and prunes the rest. This leaves a cleaner
+        more useable object for us later on.
+	
+	.PARAMETER Issues
+		Either one issue or an array of issues to be parsed.
+
+	.PARAMETER SprintID
+		The SprintID this issue is a part of.
+
+	.NOTES
+        This function eliminates a lot of unnecessary information
+        that is returned for each issue from Jira. If later on a custom
+        field needs to be retained that is not currently being used,
+        this is what will need to be edited to capture that data.
+	
+	.EXAMPLE
+		Format-Sprintissues -Issues $Sprintinfo.issues -SprintID $Sprint.id
+#>
+
+    param
+	(
+		[Parameter(Mandatory = $true,Position = 0)]
+		[Object]$Project
+	)
+
+            $Global:ObjProjects += New-Object PSObject -Property @{
+            ID =               $Project.id;
+		    Key =              $Project.key;
+		    Description =      $Project.description;
+            Lead =             $Project.lead;
+            Components =       $Project.components;
+            IssueTypes =       $Project.issuetypes
+            Name =             $Project.name
+            Versions =         $project.versions
+            CategoryInfo =     $Project.projectcategory
+            }
+       
+}
+
 Function Get-ProperUserInfo
 {
 
@@ -291,86 +273,6 @@ Function Get-ProperUserInfo
     }
 
     Return $UserInfo
-}
-
-Function Add-SQLInsert
-{
-
-	<#
-	.SYNOPSIS
-		Takes a insert statement and puts it in a MySQL DB.
-	
-	.DESCRIPTION
-        A MySQL insert statement gets passed and this function
-        calls mysql.exe to insert it.
-	
-	.PARAMETER SqlInsert
-		The insert statement to be put in the DB.
-
-	.NOTES
-        This function currently has the mysql user and password
-        hard set. Since the password is being called in plain text
-        each time it runs it kicks a watning from mysql out to
-        $Error about how its not best practice. This means that you
-        can't check $SqlResult for a warning to see if something went
-        wrong. I need a better method for this.
-
-	
-	.EXAMPLE
-        Add-SQLInsert $SqlInsert
-    #>
-
-   	Param
-		(
-		[Parameter(Mandatory = $False)]
-		[String]$SqlInsert
-	) 
-    
-    set-location 'C:\Program Files\MySQL\MySQL Server 5.7\bin';
-
-    $SqlResult = .\mysql.exe --user=root --password=wowpass3 -e "$SqlInsert;" --batch -N 2>&1 | Out-Null
-
-}
-
-Function Get-SQLData
-{
-
-	<#
-	.SYNOPSIS
-		Takes a insert statement and puts it in a MySQL DB.
-	
-	.DESCRIPTION
-        A MySQL insert statement gets passed and this function
-        calls mysql.exe to insert it.
-	
-	.PARAMETER SqlInsert
-		The insert statement to be put in the DB.
-
-	.NOTES
-        This function currently has the mysql user and password
-        hard set. Since the password is being called in plain text
-        each time it runs it kicks a watning from mysql out to
-        $Error about how its not best practice. This means that you
-        can't check $SqlResult for a warning to see if something went
-        wrong. I need a better method for this.
-
-	
-	.EXAMPLE
-        Add-SQLInsert $SqlInsert
-    #>
-
-   	Param
-		(
-		[Parameter(Mandatory = $False)]
-		[String]$SqlQuery
-	) 
-    
-    set-location 'C:\Program Files\MySQL\MySQL Server 5.7\bin';
-
-    $SqlResult = .\mysql.exe --user=root --password=$MySqlPass "$SqlQuery;" --batch -N
-
-    Return $SqlResult
-
 }
 
 Function Get-Week

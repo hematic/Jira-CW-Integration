@@ -222,6 +222,86 @@ Function Set-JiraCreds
     Return $JiraCredentials
 }
 
+Function Get-ActiveProjects
+{
+  	<#
+	.SYNOPSIS
+		Gets a list of active sprints for a given board.
+	
+	.DESCRIPTION
+		Makes an API call to get all sprints for a given
+        board and then selects only the active ones to return.
+        If no sprints are active on that board it will return
+        $False.
+	
+	.NOTES
+		If the user making the API call doesn't have permission
+        to access a sprint on the board, it returns a 400 error.
+        Found this out the hard way.
+	
+	.EXAMPLE
+		Get-ActiveSprints $BoardID
+#>
+	
+
+    $RestApiURI = $JiraServerRoot + "rest/api/2/project"
+    $JSONResponse = Invoke-RestMethod -Uri $restapiuri -Headers @{ "Authorization" = "Basic $JiraCredentials" } -ContentType application/json -Method Get
+    $ActiveProjects = $JSONResponse
+
+    If($ActiveProjects)
+    {
+        Return $ActiveProjects
+    }
+
+    Else
+    {
+        Return $False
+    }
+
+}
+
+Function Get-ProjectInfo
+{
+  	<#
+	.SYNOPSIS
+		Gets a list of active sprints for a given board.
+	
+	.DESCRIPTION
+		Makes an API call to get all sprints for a given
+        board and then selects only the active ones to return.
+        If no sprints are active on that board it will return
+        $False.
+	
+	.NOTES
+		If the user making the API call doesn't have permission
+        to access a sprint on the board, it returns a 400 error.
+        Found this out the hard way.
+	
+	.EXAMPLE
+		Get-ActiveSprints $BoardID
+#>
+	param
+	(
+		[Parameter(Mandatory = $true,Position = 0)]
+		[INT]$ProjectID
+	)
+
+    $RestApiURI = $JiraServerRoot + "rest/api/2/project/$ProjectID"
+    $JSONResponse = Invoke-RestMethod -Uri $restapiuri -Headers @{ "Authorization" = "Basic $JiraCredentials" } -ContentType application/json -Method Get
+    $ActiveProjects = $JSONResponse
+
+    If($ActiveProjects)
+    {
+        Return $ActiveProjects
+    }
+
+    Else
+    {
+        Return $False
+    }
+
+}
+
 ####################################################################
 #Jira Edit Functions
 

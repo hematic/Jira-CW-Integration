@@ -11,6 +11,7 @@ $VerbosePreference = 'SilentlyContinue'
 #Arrays
 [Array]$Global:objActiveSprints    = @()
 [Array]$Global:objSprintIssues     = @()
+[Array]$Global:ObjProjects         = @()
 
 #Strings
 [String]$CWServerRoot = "https://cw.connectwise.net/"
@@ -42,12 +43,24 @@ foreach($Board in $Listofboards)
     If ($Board.name -eq "Infrastructure")
     {
         $Sprints = Get-ActiveSprints -BoardID $Board.id
+        
 
         If($Sprints -ne $False)
         {
             $objActiveSprints += $Sprints  
         }
     }
+}
+
+$Projects = Get-ActiveProjects
+
+If($Projects -ne $False)
+{
+  Foreach($Project in $Projects)
+  {
+    $Projectinfo = Get-ProjectInfo -ProjectID $Project.id
+    Format-Project -Project $Projectinfo
+  }  
 }
 
 #Pull all of the issues from each sprint
