@@ -84,8 +84,6 @@ Foreach($Issue in $objSprintIssues)
     If($Issue.status -eq 'Closed')
     {
         Write-Output "Jira Issue is closed."
-        Write-Output "Checking if the CWTicket is closed."
-
         $ISClosed = Get-cwticket -TicketID $($Issue.CWTicketID)
 
         If($ISClosed.status.name -eq 'Completed Contact Confirmed')

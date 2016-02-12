@@ -819,16 +819,13 @@ function Invoke-WorklogProcess
 
                 If($TimeEntry -eq 'Something went wrong.')
                 {
-                    Write-Output "Jira Time Entry ID #$($Worklog.id)"
-                    Write-Output "Time Entry occurred in a previous time period."
-                    
+                    Write-Output "Jira Time Entry ID #$($Worklog.id) occurred in a previous time period."
                 }
 
                 Else
                 {
                     Write-output "New Time Entry Created."
-                    Write-Output "Jira Time Entry ID #$($Worklog.id)"
-                    Write-Output "Time Logged = $($Worklog.timespent)"
+                    Write-Output "Jira Time Entry ID #$($Worklog.id) | Time Logged = $($Worklog.timespent)"
                 }
             }
 
