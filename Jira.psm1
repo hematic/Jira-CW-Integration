@@ -108,7 +108,7 @@ Function Get-ActiveSprints
 		[INT]$BoardID
 	)
 
-    $RestApiURI = $JiraServerRoot + "rest/agile/1.0/board/$BoardiD/sprint"
+    $RestApiURI = $JiraServerRoot + "rest/agile/1.0/board/$BoardiD/sprint?maxResults=$MaxResults"
     $JSONResponse = Invoke-RestMethod -Uri $restapiuri -Headers @{ "Authorization" = "Basic $JiraCredentials" } -ContentType application/json -Method Get
     $ActiveSprints = ($JSONResponse.values | Where-Object {$_.state -eq 'Active'})
 
@@ -142,7 +142,7 @@ Function Get-BoardList
 		Get-BoardList
 #>
 
-    $RestApiURI = $JiraServerRoot + "rest/agile/1.0/board"
+    $RestApiURI = $JiraServerRoot + "rest/agile/1.0/board?maxResults=$MaxResults"
     $JSONResponse = Invoke-RestMethod -Uri $restapiuri -Headers @{ "Authorization" = "Basic $JiraCredentials" } -ContentType application/json -method Get
     
     If($JSONResponse)
@@ -183,8 +183,8 @@ function Get-SprintInfo
 		[INT]$SprintID
 	)
 	
-	$RestApiURI = $JiraServerRoot + "rest/agile/1.0/sprint/$Sprintid/issue"
-	$JSONResponse = Invoke-RestMethod -Uri $restapiuri -Headers @{ "Authorization" = "Basic $JiraCredentials" } -ContentType application/json -method Get
+	$RestApiURI = $JiraServerRoot + "rest/agile/1.0/sprint/$Sprintid/issue?maxResults=$MaxResults"
+	$JSONResponse = Invoke-RestMethod -Uri $restapiuri -Headers @{ "Authorization" = "Basic $JiraCredentials" } -ContentType application/json -Body $Body -method Get
 
     If($JSONResponse)
     {
@@ -244,7 +244,7 @@ Function Get-ActiveProjects
 #>
 	
 
-    $RestApiURI = $JiraServerRoot + "rest/api/2/project"
+    $RestApiURI = $JiraServerRoot + "rest/api/2/project?maxResults=$MaxResults"
     $JSONResponse = Invoke-RestMethod -Uri $restapiuri -Headers @{ "Authorization" = "Basic $JiraCredentials" } -ContentType application/json -Method Get
     $ActiveProjects = $JSONResponse
 
@@ -341,4 +341,28 @@ $Body= @"
 
     $RestApiURI = $JiraServerRoot + "rest/api/latest/issue/$IssueID"
     $JSONResponse = Invoke-RestMethod -Uri $restapiuri -Headers @{ "Authorization" = "Basic $JiraCredentials" } -ContentType application/json -Body $Body -method Put
+}
+
+Function Set-JiraCreds
+{
+  	<#
+	.SYNOPSIS
+		Builds a Jira Credential String
+	
+	.DESCRIPTION
+		Builds a Jira credential string. Used for API calls.
+	
+	.NOTES
+		N/A
+	
+	.EXAMPLE
+		Get-JiraCreds
+#>
+	
+    $BinaryString = [System.Runtime.InteropServices.marshal]::StringToBSTR($($Jirainfo.password))
+    $JPassword = [System.Runtime.InteropServices.marshal]::PtrToStringAuto($BinaryString)
+    $JLogin = $Jirainfo.user
+    $Bytes = [System.Text.Encoding]::UTF8.GetBytes("$jLogin`:$jPassword")
+    $JiraCredentials = [System.Convert]::ToBase64String($bytes)
+    Return $JiraCredentials
 }

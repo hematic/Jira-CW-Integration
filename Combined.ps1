@@ -18,11 +18,15 @@ $VerbosePreference = 'SilentlyContinue'
 [String]$JiraServerRoot = "https://jira.labtechsoftware.com/"
 [String]$ImpersonationMember = 'jira'
 
+#Ints
+[Int]$MaxResults = '250'
+
 #Credentials
 $Global:JiraInfo = New-Object PSObject -Property @{
 User = 'cwintegrator'
 Password = 'kaRnFYpCYEZ9LQQ'
 }
+
 $JiraCredentials = Set-JiraCreds
 
 $Global:CWInfo = New-Object PSObject -Property @{
@@ -52,6 +56,7 @@ foreach($Board in $Listofboards)
     }
 }
 
+<#
 $Projects = Get-ActiveProjects
 
 If($Projects -ne $False)
@@ -62,6 +67,7 @@ If($Projects -ne $False)
     Format-Project -Project $Projectinfo
   }  
 }
+#>
 
 #Pull all of the issues from each sprint
 foreach($Sprint in $objActiveSprints)
@@ -80,6 +86,7 @@ Foreach($Issue in $objSprintIssues)
     Write-Output "Issue #$Count of $($objsprintissues.count)"
     Invoke-TicketProcess -Issue $Issue -BoardName "LT-Infrastructure"
     Invoke-WorklogProcess -Issue $Issue
+
     #Close the ticket in CW if its closed in Jira
     If($Issue.status -eq 'Closed')
     {

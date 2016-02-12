@@ -566,6 +566,75 @@ Function Close-CWTicket
     }
 }
 
+Function Open-CWTicket
+{
+	<#
+	.SYNOPSIS
+		Retrieves an object formatted ConnectWise Ticket.
+	
+	.DESCRIPTION
+		Pass this function a ticket id and if the ticket exists it
+        will return you all the information. If it doesnt exist it 
+        will return $False.
+	
+	.Parameter Ticketid
+        This is the ConnectWise ticket ID that you want to retrive information on.
+
+	.EXAMPLE
+		Get-CWTicket -TicketID '8675309'
+
+	.EXAMPLE
+		Get-CWTicket '8675309'
+    #>
+
+    [cmdletbinding()]
+    
+    param
+    (
+    	[Parameter(Mandatory = $true,Position = 0,ValueFromPipeline,ValueFromPipelineByPropertyName)]
+        [ValidateNotNullorEmpty()]
+		[INT]$TicketID
+    )
+
+    Begin
+    {
+        [string]$BaseUri     = "$CWServerRoot" + "v4_6_Release/apis/3.0/service/tickets/$ticketID"
+        [string]$Accept      = "application/vnd.connectwise.com+json; version=v2015_3"
+        [string]$ContentType = "application/json"
+
+        $Headers=@{
+            'X-cw-overridessl' = "True"
+            "Authorization"="Basic $encodedAuth"
+            }
+
+        $Body= @"
+        [
+        {
+            "op" : "replace", "path": "/status/id", "value": "5800"
+        }
+        ]
+"@
+     }
+    
+    Process
+    {      
+        $JSONResponse = Invoke-RestMethod -URI $BaseURI -Headers $Headers -Body $Body -ContentType $ContentType -Method Patch
+    }
+    
+    End
+    {
+        If($JSONResponse)
+        {
+            Return $JSONResponse
+        }
+
+        Else
+        {
+            Return $False
+        }
+    }
+}
+
 function New-CWTimeEntry
 {
 
@@ -781,6 +850,8 @@ function Invoke-WorklogProcess
     {
         Write-Output "Beginning Time Entry Checks."
 
+        [ARRAY]$NewTimeEntries = @()
+
         If(!$Issue.WorkLog.worklogs)
         {
             Write-output "No Jira Time Entries Exist for this issue."
@@ -790,6 +861,13 @@ function Invoke-WorklogProcess
         Else
         {
             Write-Output "There are $($Issue.worklog.worklogs.count) time entries in JIRA for this issue."
+        }
+
+        $Ticket = Get-cwticket -TicketID $($Issue.CWTicketID)
+
+        If($Ticket.status.name -eq 'Completed Contact Confirmed')
+        {
+            $Closed = $True
         }
 
         [Array]$TimeEntryIDs = (Get-CWTimeEntries -TicketID "$($Issue.cwticketid)").id
@@ -804,8 +882,9 @@ function Invoke-WorklogProcess
             Foreach($Detail in $TEDetails)
             {
                 [INT]$Present = 0
-                $RegCheck = ([regex]::matches($Detail.internalnotes, "(?:\[JiraID!!)(.*)(?:!!)")).groups[1].value
-                
+                $ErrorActionPreference = 'SilentlyContinue'
+                $RegCheck = ([regex]::matches($Detail.internalnotes, "(?:\[JiraID!!)(.*)(?:!!)")).groups[1].value   
+                $ErrorActionPreference = 'Continue'
                 If($Worklog.id -eq $RegCheck)
                 {
                     [INT]$Present = 1
@@ -815,6 +894,36 @@ function Invoke-WorklogProcess
 
             If($Present -ne 1)
             {
+                $NewTimeEntries += $Worklog
+            }
+
+            Else
+            {
+               Write-Output "Jira Time Entry ID #$($Worklog.id) has already been logged." 
+            }
+        }
+
+        If($NewTimeEntries.count -ge 1)
+        {
+            If($Closed)
+            {
+                $OpenIt = Open-CWTicket -TicketID $($Issue.CWTicketID)
+                    
+                If ($OpenIt.status.name -eq 'New (Re-Open)')
+                {
+                    Write-Output "CW Ticket #$($Issue.CWTicketID) has been re-opened for posting time."
+                }
+
+                Else
+                {
+                    Write-Output "Failed to re-open CW Ticket #$($Issue.CWTicketID)"
+                    break;
+                }
+            }
+            
+            Foreach($Worklog in $NewTimeEntries)   
+            {
+            
                 $TimeEntry = New-CWTimeEntry -WorkLog $Worklog -CWTicketID "$($Issue.cwticketid)"
 
                 If($TimeEntry -eq 'Something went wrong.')
@@ -827,14 +936,7 @@ function Invoke-WorklogProcess
                     Write-output "New Time Entry Created."
                     Write-Output "Jira Time Entry ID #$($Worklog.id) | Time Logged = $($Worklog.timespent)"
                 }
-            }
-
-            Else
-            {
-               Write-Output "Jira Time Entry ID #$($Worklog.id) has already been logged." 
-            }
-
-
-    }
+            }         
+        }
     }
 }
