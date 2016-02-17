@@ -466,7 +466,17 @@ function New-CWTicket
         $Summary = $Summary.Replace('"', "'")
         ###############################################################
     
-        $UserInfo = Get-ProperUserInfo -JiraEmail $($Ticket.assignee.emailaddress)
+        If(!$Ticket.assignee.emailaddress)
+        {
+            Write-Output "WARNING!! No Assignee was present on this Issue in JIRA. $DefaultContactEmail has been assigned."
+            $UserInfo = Get-ProperUserInfo -JiraEmail $DefaultContactEmail
+        }
+
+        Else
+        {
+            $UserInfo = Get-ProperUserInfo -JiraEmail $($Ticket.assignee.emailaddress)
+        }
+
         $Body= @"
 {
     "summary"   :    "[JIRA][$($Ticket.key)] - $($Summary)",
@@ -788,7 +798,6 @@ function Invoke-TicketProcess
             }
             Write-Output "CW Ticket #$($ticket.id) created."
             $issue.CWTicketID = $Ticket.id
-            #Update-CWTicketValue -CWTicketID $($Ticket.id) -JiraIssueKey $($Issue.Key)
             Edit-JiraIssue -IssueID "$($Issue.ID)" -CWTicketID "$($Ticket.id)"
             Write-Output "CW Ticket #$($ticket.id) mapped in JIRA."
         }

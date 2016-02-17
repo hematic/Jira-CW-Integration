@@ -17,6 +17,7 @@ $VerbosePreference = 'SilentlyContinue'
 [String]$CWServerRoot = "https://cw.connectwise.net/"
 [String]$JiraServerRoot = "https://jira.labtechsoftware.com/"
 [String]$ImpersonationMember = 'jira'
+[String]$DefaultContactEmail = 'dmiller@labtechsoftware.com'
 
 #Ints
 [Int]$MaxResults = '250'
