@@ -466,7 +466,7 @@ function New-CWTicket
         $Summary = $Summary.Replace('"', "'")
         ###############################################################
     
-        If(!$Ticket.assignee.emailaddress)
+        If(!$($Ticket.assignee.emailaddress))
         {
             Write-Output "WARNING!! No Assignee was present on this Issue in JIRA. $DefaultContactEmail has been assigned."
             $UserInfo = Get-ProperUserInfo -JiraEmail $DefaultContactEmail
