@@ -643,6 +643,10 @@ function Invoke-TicketProcess
                 Write-Output "CW Ticket #$($ticket.id) mapped in JIRA." 
             }
 
+            Else
+            {
+                Write-Output "CW Ticket #$($Issue.customfield_10313) is already correctly mapped."
+            }
         }
     }
 }
@@ -661,6 +665,7 @@ function Invoke-WorklogProcess
 
     Process
     {
+        Write-Output "Beginning Time Entry Checks."
 
         [ARRAY]$NewTimeEntries = @()
 
@@ -909,22 +914,21 @@ $WeekInfo = Get-Week -Weekday (get-date)
 [String]$WeekStart = "$($WeekInfo.start.Year)`-$($WeekInfo.start.month)`-$($WeekInfo.start.day)"
 [String]$WeekEnd = "$($WeekInfo.end.Year)`-$($WeekInfo.end.month)`-$($WeekInfo.end.day)"
 
-Write-output "This Week is $Weekstart - $Weekend"
 
 Foreach($User in $arrUsernames)
 {
-    Write-Output "-----------------------------------------------"
-    Write-output "Beginning Processing User: $User"
-    $UserWorklogs = Get-Worklogs -username $User -dateFrom $WeekStart -dateTo $WeekEnd
+      Write-Output "-----------------------------------------------"
+      Write-output "Beginning Processing User: $User"
+      $UserWorklogs = Get-Worklogs -username $User -dateFrom $WeekStart -dateTo $WeekEnd
 
-    If($UserWorklogs -eq $False)
-    {
+      If($UserWorklogs -eq $False)
+      {
         Write-Output "No Time Entries for User: $User"
-    }
+      }
 
-    Else
-    {
-        Write-Output "Time Entries Found for $User : $(($Userworklogs | measure-object).count)"
+      Else
+      {
+
         Foreach($Worklog in $UserWorklogs)
         {
             $Issue = Get-Issue -IssueID "$($worklog.issue.id)"
@@ -939,7 +943,7 @@ Foreach($User in $arrUsernames)
             
                 If($ISClosed.status.name -eq $ClosedStatus)
                 {
-                    Write-Output "CW Ticket #$($Issue.customfield_10313) is already closed."
+                    Write-Output "CW Ticket #$($Issue.CWTicketID) is already closed."
                 }
             
                 Else
