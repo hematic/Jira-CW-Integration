@@ -275,7 +275,7 @@ Function Get-ProperUserInfo
     Return $UserInfo
 }
 
-Function Get-Week
+Function Get-TestWeek
 { 
 <#
 	.SYNOPSIS

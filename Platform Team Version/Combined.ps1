@@ -1,4 +1,4 @@
-﻿$ModuleParentDirectory = 'C:\Users\pmarshall\Documents\GitHub\Jira-CW-Integration\'
+﻿$ModuleParentDirectory = 'C:\Users\pmarshall\Documents\GitHub\Jira-CW-Integration\Platform Team Version\'
 Import-Module -Name $($ModuleParentDirectory + "ConnectWise.psm1") -force
 Import-Module -Name $($ModuleParentDirectory + "DataManipulation.psm1") -force
 Import-Module -Name $($ModuleParentDirectory + "Jira.psm1") -force

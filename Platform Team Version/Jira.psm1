@@ -38,6 +38,40 @@ Function Get-Issue
     }
 }
 
+Function Get-Worklogs
+{
+	param
+	(
+		[Parameter(Mandatory = $true,Position = 0)]
+		[String]$dateFrom,
+		[Parameter(Mandatory = $true,Position = 0)]
+		[String]$dateTo,
+		[Parameter(Mandatory = $true,Position = 0)]
+		[String]$username
+	)
+
+
+    $RestApiURI = $JiraServerRoot + "rest/tempo-timesheets/3/worklogs/"
+
+        $Body = @{
+    "dateFrom" = "$dateFrom"
+    "dateTo" = "$dateTo"
+    "username" = "$username"
+    }
+
+    $JSONResponse = Invoke-RestMethod -Uri $restapiuri -Headers @{ "Authorization" = "Basic $JiraCredentials" } -Body $Body -ContentType application/json -method get
+
+    If($JSONResponse)
+    {
+        Return $JSONResponse
+    }
+
+    Else
+    {
+        Return $False
+    }
+}
+
 Function Get-JiraUserInfo
 {
   	<#
