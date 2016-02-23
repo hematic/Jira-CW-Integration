@@ -3,22 +3,7 @@
 
 Function Get-Issue
 {
-  	<#
-	.SYNOPSIS
-		Gets an object representation of a JIRA Issue..
-	
-	.DESCRIPTION
-		Pass this function a JIRA issueid and it will return all
-        the information about that issue in JIRA.
-	
-	.NOTES
-		N/A
-	
-	.EXAMPLE
-		Get-Issue -IssueID '8675309'
-#>
-	
-	param
+  	param
 	(
 		[Parameter(Mandatory = $true,Position = 0)]
 		[INT]$IssueID
@@ -74,22 +59,7 @@ Function Get-Worklogs
 
 Function Get-JiraUserInfo
 {
-  	<#
-	.SYNOPSIS
-		Gets an object representation of a JIRA Issue..
-	
-	.DESCRIPTION
-		Pass this function a JIRA issueid and it will return all
-        the information about that issue in JIRA.
-	
-	.NOTES
-		N/A
-	
-	.EXAMPLE
-		Get-Issue -IssueID '8675309'
-#>
-	
-	param
+    param
 	(
 		[Parameter(Mandatory = $true,Position = 0)]
 		[String]$Name
@@ -117,20 +87,6 @@ Function Get-JiraUserInfo
 
 Function Set-JiraCreds
 {
-  	<#
-	.SYNOPSIS
-		Builds a Jira Credential String
-	
-	.DESCRIPTION
-		Builds a Jira credential string. Used for API calls.
-	
-	.NOTES
-		N/A
-	
-	.EXAMPLE
-		Get-JiraCreds
-#>
-	
     $BinaryString = [System.Runtime.InteropServices.marshal]::StringToBSTR($($Jirainfo.password))
     $JPassword = [System.Runtime.InteropServices.marshal]::PtrToStringAuto($BinaryString)
     $JLogin = $Jirainfo.user
@@ -141,21 +97,6 @@ Function Set-JiraCreds
 
 Function Edit-JiraIssue
 {
-  	<#
-	.SYNOPSIS
-		Makes edits to a specific JIRA issue.
-	
-	.DESCRIPTION
-		Pass this function the JIRA IssueID and the 
-        CW TicketID and it will update that custom field in JIRA.
-	
-	.NOTES
-		N/A
-	
-	.EXAMPLE
-		Edit-JiraIssue -IssueID '8675309' -CWTicketID '1234567'
-#>
-	
 	param
 	(
 		[Parameter(Mandatory = $True,Position = 0)]
@@ -182,25 +123,6 @@ $Body= @"
 
 Function Get-CWTicket
 {
-	<#
-	.SYNOPSIS
-		Retrieves an object formatted ConnectWise Ticket.
-	
-	.DESCRIPTION
-		Pass this function a ticket id and if the ticket exists it
-        will return you all the information. If it doesnt exist it 
-        will return $False.
-	
-	.Parameter Ticketid
-        This is the ConnectWise ticket ID that you want to retrive information on.
-
-	.EXAMPLE
-		Get-CWTicket -TicketID '8675309'
-
-	.EXAMPLE
-		Get-CWTicket '8675309'
-    #>
-
     [cmdletbinding()]
     
     param
@@ -252,26 +174,6 @@ Function Get-CWTicket
 
 Function Get-CWTimeEntries
 {
-	<#
-	.SYNOPSIS
-		Retrieves an array of Time Entries related to a ConnectWise Ticket.
-	
-	.DESCRIPTION
-		Pass this function a ticket id and if the ticket exists and their 
-        are time entries it will return you all the information. If it 
-        doesnt exist it will return $False.
-	
-	.Parameter Ticketid
-        This is the ConnectWise ticket ID that you want to retrive time
-        entries for.
-
-	.EXAMPLE
-		Get-CWTimeEntries -TicketID '8675309'
-
-	.EXAMPLE
-		Get-CWTimeEntries '8675309'
-    #>
-    
     [cmdletbinding()]
 
     param
@@ -313,27 +215,6 @@ Function Get-CWTimeEntries
 
 Function Get-TimeEntryDetails
 {
-	<#
-	.SYNOPSIS
-		Retrieves an object formatted time entry record.
-	
-	.DESCRIPTION
-		Pass this function a time entry id and if the entry exists it
-        will return you all the information. If it doesnt exist it 
-        will return $False. Time Entry ID's can be gathered from the
-        Get-CWTimeEntries function.
-	
-	.Parameter TimeentryID
-        This is the ConnectWise time entry ID that you want to retrive
-        specific data for.
-
- 	.EXAMPLE
-		Get-TimeEntryDetails -$TimeEntryID '7714622'
-
-	.EXAMPLE
-		Get-TimeEntryDetails '7714622'
-    #>
-
     [cmdletbinding()]
 
     param
@@ -375,27 +256,6 @@ Function Get-TimeEntryDetails
 
 Function Get-CWMember
 {
-
-    <#
-	.SYNOPSIS
-		Retrieves an object formatted ConnectWise Member.
-	
-	.DESCRIPTION
-		Pass this function a email address and if it matches a member
-        it will return you all the information. If it doesnt exist it 
-        will return $False.
-
-    .Parameter EmailAddress
-        This is the email address belonging to the member you are 
-        trying to retrieve information on.
-	
-	.EXAMPLE
-		Get-CWMember -EmailAddress 'pmarshall@labtechsoftware.com'
-
-	.EXAMPLE
-		Get-CWMember 'pmarshall@labtechsoftware.com'
-    #>
-
     [cmdletbinding()]
 
     param
@@ -442,33 +302,6 @@ Function Get-CWMember
 
 Function Get-CWContact
 {
-
-    <#
-	.SYNOPSIS
-		Retrieves an object formatted ConnectWise Contact.
-	
-	.DESCRIPTION
-		Pass this function a first name,last name and company ID
-        if there is a contact it will return you the ID. If it 
-        doesn't exist it will return $False.
-	
-    .Parameter First
-        The First Name of the contact you are searching for.
-
-    .Parameter Last
-        The Last Name of the contact you are searching for.
-
-    .Parameter CompanyID
-        The companyid that the contact belongs to.
-        
-	.EXAMPLE
-		Get-CWContact -First 'Phillip' -Last 'Marshall' -CompanyID '49804'
-
-	.EXAMPLE
-		Get-CWContact 'Phillip' 'Marshall' '49804'
-
-    #>
-
     [cmdletbinding()]
 
     param
@@ -521,33 +354,6 @@ Function Get-CWContact
 
 function New-CWTicket 
 {
-	<#
-	.SYNOPSIS
-		Creates a new ticket on a CW Board.
-	
-	.DESCRIPTION
-		You pass this function a ticket object and it will create
-        a ticket on the proper board.
-	
-    .DETAILED
-        The Ticket Object should contain at minimum:
-        $Ticket.Summary
-        $Ticket.assignee.emailaddress
-
-    .Parameter Ticket
-        The ticket object containing information needed to create 
-        the new ticket.
-
-    .Parameter Boardname
-        The boardname to create the ticket on.
-        
-	.EXAMPLE
-		New-CWTicket -Ticket $Issue
-
-	.EXAMPLE
-		New-CWTicket $Issue
-    #>
-
     [cmdletbinding()]
 
     param
@@ -623,25 +429,6 @@ function New-CWTicket
 
 Function Close-CWTicket
 {
-	<#
-	.SYNOPSIS
-		Retrieves an object formatted ConnectWise Ticket.
-	
-	.DESCRIPTION
-		Pass this function a ticket id and if the ticket exists it
-        will return you all the information. If it doesnt exist it 
-        will return $False.
-	
-	.Parameter Ticketid
-        This is the ConnectWise ticket ID that you want to retrive information on.
-
-	.EXAMPLE
-		Get-CWTicket -TicketID '8675309'
-
-	.EXAMPLE
-		Get-CWTicket '8675309'
-    #>
-
     [cmdletbinding()]
     
     param
@@ -692,25 +479,6 @@ Function Close-CWTicket
 
 Function Open-CWTicket
 {
-	<#
-	.SYNOPSIS
-		Retrieves an object formatted ConnectWise Ticket.
-	
-	.DESCRIPTION
-		Pass this function a ticket id and if the ticket exists it
-        will return you all the information. If it doesnt exist it 
-        will return $False.
-	
-	.Parameter Ticketid
-        This is the ConnectWise ticket ID that you want to retrive information on.
-
-	.EXAMPLE
-		Get-CWTicket -TicketID '8675309'
-
-	.EXAMPLE
-		Get-CWTicket '8675309'
-    #>
-
     [cmdletbinding()]
     
     param
@@ -761,38 +529,6 @@ Function Open-CWTicket
 
 function New-CWTimeEntry
 {
-
-	<#
-	.SYNOPSIS
-		Makes a time Entry for a user
-	
-	.DESCRIPTION
-		This function will make a time entry in ConnectWise
-        for whatever user you specify. You must Pass it a 
-        Worklog Object.
-	
-	.DETAILED
-        The worklog object should contain at a minimum:
-            $Worklog.ID
-            $Worklog.CWTicketID.
-            $Worklog.created
-            $Worklog.ended
-            $Worklog.comment
-	
-    .PARAMETER Worklog
-        This is a formatted [PSCustomObject] that contains the worklog
-        information from Jira.
-    
-    .PARAMETER CWTicketID
-        This is the Connectwise Ticket ID you want to make a time
-        entry on.
-
-	.EXAMPLE
-		New-CWTimeEntry -Worklog $Worklog -CWTicketID '8675309'
-
-	.EXAMPLE
-		New-CWTimeEntry "$Worklog" "8675309"
-    #>
 
     [cmdletbinding()]
 
@@ -862,33 +598,6 @@ function New-CWTimeEntry
 
 function Invoke-TicketProcess
 {
-	<#
-	.SYNOPSIS
-		Processes a ticket between Jira and ConnectWise
-	
-	.DESCRIPTION
-		This function will take a ticket in Jira and check if the
-        value in the CW Ticket custom field is filled out. If it is
-        it will check if that ticket exists in CW. If needed a new 
-        ticket will be made and the custom field will be updated with 
-        the proper value.
-	
-	.DETAILED
-	
-    .PARAMETER Issue
-        This is a formatted [PSCustomObject] that contains the ticket
-        information from Jira.
-
-    .PARAMETER BoardName
-        This is the ConnectWise board you want tickets created on.
-    
-	.EXAMPLE
-		Invoke-TicketProcess -Issue $Issue
-
-	.EXAMPLE
-		Invoke-TicketProcess $Issue
-    #>
-
     [cmdletbinding()]
 
     param
@@ -944,8 +653,6 @@ function Invoke-TicketProcess
 
 function Invoke-WorklogProcess
 {
-    [cmdletbinding()]
-
     param
     (
         [Parameter(Mandatory = $true,Position = 0,ValueFromPipeline,ValueFromPipelineByPropertyName)]
@@ -1037,29 +744,6 @@ function Invoke-WorklogProcess
 
 Function Format-SanitizedString
 {
-	
-	<#
-	.SYNOPSIS
-		Takes a string and sanitizes it for insert into a MySQL DB.
-	
-	.DESCRIPTION
-        Once a string is passed, the script verifies that any special
-        characters that don't play nice with inserts are escaped properly. 
-	
-	.PARAMETER InputString
-		The string to be sanitized.
-
-	.NOTES
-        Currently sanitizes the following characters:
-            Backslashes
-            Single Quotes
-            Double Quotes
-
-	
-	.EXAMPLE
-        Format-SanitizedString $InputString
-    #>
-
 	[CmdLetBinding()]
 	Param
 		(
