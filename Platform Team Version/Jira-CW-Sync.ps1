@@ -621,11 +621,11 @@ function Invoke-TicketProcess
 
             If($Ticket -eq $False)
             {
-                Write-Output "Failed to Create CW Ticket for Jira Issue $($Issue.id)"
+                Write-Output "Failed to Create CW Ticket for Jira Issue $($Issue.customfield_10313)"
             }
 
             Write-Output "CW Ticket #$($ticket.id) created."
-            Edit-JiraIssue -IssueID "$($Worklog.issue.id)" -CWTicketID "$($Ticket.id)"
+            Edit-JiraIssue -IssueID "$($Worklog.issue.id)" -CWTicketID "$($Ticket.customfield_10313)"
             Write-Output "CW Ticket #$($ticket.id) mapped in JIRA."
         }
 
@@ -885,17 +885,16 @@ $VerbosePreference = 'SilentlyContinue'
 [String]$ClosedStatus = 'Completed Contact Confirmed'
 [String]$Global:OpenStatusValue = '5800'
 [String]$Global:ReopenStatusName = 'New (Re-Open)'
-
-#Ints
 [Int]$MaxResults = '250'
 
-#Credentials
+#Jira Credentials
 $Global:JiraInfo = New-Object PSObject -Property @{
 User = 'cwintegrator'
 Password = 'kaRnFYpCYEZ9LQQ'
 }
-
 $JiraCredentials = Set-JiraCreds
+
+#CW Credentials
 $Global:CWInfo = New-Object PSObject -Property @{
 Company = 'connectwise'
 PublicKey = '4hc35v3aNRTjib9W'

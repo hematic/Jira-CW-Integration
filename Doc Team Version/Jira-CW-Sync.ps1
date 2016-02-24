@@ -9,7 +9,8 @@ Function Get-Issue
 		[INT]$IssueID
 	)
 
-    $RestApiURI = $JiraServerRoot + "rest/agile/1.0/issue/$IssueID"
+    #$RestApiURI = $JiraServerRoot + "rest/agile/1.0/issue/$IssueID"
+    $RestApiURI = $JiraServerRoot + "rest/api/2/issue/$IssueID"
     $JSONResponse = Invoke-RestMethod -Uri $restapiuri -Headers @{ "Authorization" = "Basic $JiraCredentials" } -ContentType application/json -method Get
 
     If($JSONResponse.fields)
@@ -100,7 +101,7 @@ Function Edit-JiraIssue
 	param
 	(
 		[Parameter(Mandatory = $True,Position = 0)]
-		[INT]$IssueID,
+		[String]$IssueID,
 		[Parameter(Mandatory = $True,Position = 1)]
 		[String]$CWTicketID
 	)
@@ -114,7 +115,7 @@ $Body= @"
 }
 "@
 
-    $RestApiURI = $JiraServerRoot + "rest/api/latest/issue/$IssueID"
+    $RestApiURI = $JiraServerRoot + "rest/api/2/issue/$IssueID"
     $JSONResponse = Invoke-RestMethod -Uri $restapiuri -Headers @{ "Authorization" = "Basic $JiraCredentials" } -ContentType application/json -Body $Body -method Put
 }
 
@@ -452,7 +453,7 @@ Function Close-CWTicket
         $Body= @"
         [
         {
-            "op" : "replace", "path": "/status/id", "value": "7315"
+            "op" : "replace", "path": "/status/id", "value": "$Global:ClosedStatusValue"
         }
         ]
 "@
@@ -609,12 +610,12 @@ function Invoke-TicketProcess
         [Parameter(Mandatory = $true,Position = 1,ValueFromPipeline,ValueFromPipelineByPropertyName)]
         [String]$Key,
         [Parameter(Mandatory = $true,Position = 1,ValueFromPipeline,ValueFromPipelineByPropertyName)]
-        [String]$Worklog
+        [Object]$Worklog
     )
 
     Process
     {
-        If ($Issue.customfield_10313 -eq 'None')
+        If ($Issue.customfield_10313 -eq $Null)
         {
             Write-Output "No CW Ticket # found for this Jira issue."
             $Ticket = New-CWTicket -Ticket $Issue -BoardName "$BoardName" -Key $Key
@@ -626,6 +627,7 @@ function Invoke-TicketProcess
 
             Write-Output "CW Ticket #$($ticket.id) created."
             Edit-JiraIssue -IssueID "$($Worklog.issue.id)" -CWTicketID "$($Ticket.id)"
+            $issue.customfield_10313 = $Ticket.id 
             Write-Output "CW Ticket #$($ticket.id) mapped in JIRA."
         }
 
@@ -892,6 +894,7 @@ $VerbosePreference = 'SilentlyContinue'
 [String]$Boardname = 'LT-Documentation'
 [String]$ClosedStatus = '>Complete'
 [String]$Global:OpenStatusValue = '6952'
+[String]$Global:ClosedStatusValue = ''
 [String]$Global:ReopenStatusName = 'New'
 
 #Ints
@@ -932,8 +935,11 @@ Foreach($User in $arrUsernames)
     Else
     {
         Write-Output "Time Entries Found for $User : $(($Userworklogs | measure-object).count)"
+        [INT]$Counter = '1'
         Foreach($Worklog in $UserWorklogs)
         {
+            Write-Output "-----------------------------------------------"
+            Write-output "Processing $Counter of $(($Userworklogs | measure-object).count)"
             $Issue = Get-Issue -IssueID "$($worklog.issue.id)"
             Invoke-TicketProcess -Issue $Issue -Boardname $Boardname -Key $($Worklog.issue.key) -Worklog $Worklog
             Invoke-WorklogProcess -Issue $Issue -Worklog $Worklog -ClosedStatus $ClosedStatus
@@ -951,19 +957,22 @@ Foreach($User in $arrUsernames)
             
                 Else
                 {
-                    $CloseIt = Close-CWTicket -TicketID $($Issue.customfield_10313)
+                    
+                    $CloseIt = Close-CWTicket -TicketID $($IsClosed.id)
 
-                    If ($CloseIt.status.name -eq 'Completed Contact Confirmed')
+                    If ($CloseIt.status.name -eq $ClosedStatus)
                     {
-                        Write-Output "CW Ticket #$($Issue.CWTicketID) has been closed."
+                        Write-Output "CW Ticket #$($IsClosed.id) has been closed."
                     }
 
                     Else
                     {
-                        Write-Output "Failed to close CW Ticket #$($Issue.CWTicketID)"
+                        Write-Output "Failed to close CW Ticket #$($IsClosed.id)"
                     }
                 }
             }
+
+            $Counter++
         }
 
       }
