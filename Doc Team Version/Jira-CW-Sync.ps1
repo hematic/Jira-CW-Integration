@@ -378,13 +378,14 @@ function New-CWTicket
     {
         #Making sure the summary field is formatted properly
         ###############################################################
-        If($($Ticket.Summary.length) -gt 90)
+        If([INT]$($Ticket.Summary.length) -gt 60)
         {
-            $Summary = $($Ticket.Summary.substring(0,75))
+            $Summary = $(($Ticket.Summary).substring(0,60))
         }
 
-        $Summary = Format-SanitizedString -InputString $($Ticket.Summary)
+        $Summary = Format-SanitizedString -InputString $Summary
         $Summary = $Summary.Replace('"', "'")
+        Write-Output "Ticket Summary is $Summary"
         ###############################################################
     
         If(!$($Ticket.assignee.emailaddress))
@@ -884,17 +885,17 @@ $ErrorActionPreference = 'Continue'
 $VerbosePreference = 'SilentlyContinue'
 
 #Arrays
-#[Array]$arrUsernames = @('cvalentine','sbakan','bwhitmire')
-[Array]$arrUsernames = @('bwhitmire')
+[Array]$arrUsernames = @('cvalentine','sbakan','bwhitmire')
+
 #Strings
 [String]$CWServerRoot = "https://cw.connectwise.net/"
 [String]$JiraServerRoot = "https://jira-dev.labtechsoftware.com/"
 [String]$ImpersonationMember = 'jira'
-[String]$DefaultContactEmail = ''
+[String]$DefaultContactEmail = 'bwhitmire@labtechsoftware.com'
 [String]$Boardname = 'LT-Documentation'
 [String]$ClosedStatus = '>Complete'
 [String]$Global:OpenStatusValue = '6952'
-[String]$Global:ClosedStatusValue = ''
+[String]$Global:ClosedStatusValue = '6951'
 [String]$Global:ReopenStatusName = 'New'
 
 #Ints

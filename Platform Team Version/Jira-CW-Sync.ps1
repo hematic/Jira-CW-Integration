@@ -377,7 +377,7 @@ function New-CWTicket
     {
         #Making sure the summary field is formatted properly
         ###############################################################
-        If($($Ticket.Summary.length) -gt 90)
+        If([INT]$($Ticket.Summary.length) -gt 90)
         {
             $Summary = $($Ticket.Summary.substring(0,75))
         }
