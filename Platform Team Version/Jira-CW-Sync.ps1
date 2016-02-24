@@ -609,23 +609,24 @@ function Invoke-TicketProcess
         [Parameter(Mandatory = $true,Position = 1,ValueFromPipeline,ValueFromPipelineByPropertyName)]
         [String]$Key,
         [Parameter(Mandatory = $true,Position = 1,ValueFromPipeline,ValueFromPipelineByPropertyName)]
-        [String]$Worklog
+        [Object]$Worklog
     )
 
     Process
     {
-        If ($Issue.customfield_10313 -eq 'None')
+        If ($Issue.customfield_10313 -eq $Null)
         {
             Write-Output "No CW Ticket # found for this Jira issue."
             $Ticket = New-CWTicket -Ticket $Issue -BoardName "$BoardName" -Key $Key
 
             If($Ticket -eq $False)
             {
-                Write-Output "Failed to Create CW Ticket for Jira Issue $($Issue.customfield_10313)"
+                Write-Output "Failed to Create CW Ticket for Jira Issue $($Issue.id)"
             }
 
             Write-Output "CW Ticket #$($ticket.id) created."
-            Edit-JiraIssue -IssueID "$($Worklog.issue.id)" -CWTicketID "$($Ticket.customfield_10313)"
+            Edit-JiraIssue -IssueID "$($Worklog.issue.id)" -CWTicketID "$($Ticket.id)"
+            $issue.customfield_10313 = $Ticket.id 
             Write-Output "CW Ticket #$($ticket.id) mapped in JIRA."
         }
 
@@ -643,6 +644,10 @@ function Invoke-TicketProcess
                 Write-Output "CW Ticket #$($ticket.id) mapped in JIRA." 
             }
 
+            Else
+            {
+                Write-Output "CW Ticket #$($Issue.customfield_10313) is already correctly mapped."
+            }
         }
     }
 }
@@ -728,7 +733,7 @@ function Invoke-WorklogProcess
 
         Else
         {
-            Write-Output "Jira Time Entry ID #$($Worklog.id) has already been logged." 
+            Write-Output "Jira Time Entry ID #$($Worklog.id) is already logged." 
         }
 
 }
@@ -880,7 +885,7 @@ $VerbosePreference = 'SilentlyContinue'
 [String]$CWServerRoot = "https://cw.connectwise.net/"
 [String]$JiraServerRoot = "https://jira.labtechsoftware.com/"
 [String]$ImpersonationMember = 'jira'
-[String]$DefaultContactEmail = ''
+[String]$DefaultContactEmail = 'pmarshall@labtechsoftware.com'
 [String]$Boardname = 'LT-Infrastructure'
 [String]$ClosedStatus = 'Completed Contact Confirmed'
 [String]$Global:OpenStatusValue = '5800'
@@ -913,7 +918,7 @@ Write-output "This Week is $Weekstart - $Weekend"
 Foreach($User in $arrUsernames)
 {
     Write-Output "-----------------------------------------------"
-    Write-output "Beginning Processing User: $User"
+    Write-output "BEGIN PROCESSING USER: $User"
     $UserWorklogs = Get-Worklogs -username $User -dateFrom $WeekStart -dateTo $WeekEnd
 
     If($UserWorklogs -eq $False)
@@ -923,9 +928,12 @@ Foreach($User in $arrUsernames)
 
     Else
     {
-        Write-Output "Time Entries Found for $User : $(($Userworklogs | measure-object).count)"
+        Write-Output "Time Entries Found: $(($Userworklogs | measure-object).count)"
+        [INT]$Counter = '1'
         Foreach($Worklog in $UserWorklogs)
         {
+            Write-Output "-----------------------------------------------"
+            Write-output "Processing $Counter of $(($Userworklogs | measure-object).count)"
             $Issue = Get-Issue -IssueID "$($worklog.issue.id)"
             Invoke-TicketProcess -Issue $Issue -Boardname $Boardname -Key $($Worklog.issue.key) -Worklog $Worklog
             Invoke-WorklogProcess -Issue $Issue -Worklog $Worklog -ClosedStatus $ClosedStatus
@@ -938,7 +946,7 @@ Foreach($User in $arrUsernames)
             
                 If($ISClosed.status.name -eq $ClosedStatus)
                 {
-                    Write-Output "CW Ticket #$($Issue.customfield_10313) is already closed."
+                    Write-Output "CW Ticket #$($Issue.customfield_10313) is closed."
                 }
             
                 Else
@@ -956,6 +964,8 @@ Foreach($User in $arrUsernames)
                     }
                 }
             }
+
+            $Counter++
         }
 
       }
