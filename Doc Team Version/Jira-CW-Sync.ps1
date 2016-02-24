@@ -385,12 +385,12 @@ function New-CWTicket
 
         $Summary = Format-SanitizedString -InputString $Summary
         $Summary = $Summary.Replace('"', "'")
-        Write-Output "Ticket Summary is $Summary"
+        Write-Log "Ticket Summary is $Summary"
         ###############################################################
     
         If(!$($Ticket.assignee.emailaddress))
         {
-            Write-Output "WARNING!! No Assignee was present on this Issue in JIRA. $DefaultContactEmail has been assigned."
+            Write-Log "WARNING!! No Assignee was present on this Issue in JIRA. $DefaultContactEmail has been assigned."
             $UserInfo = Get-ProperUserInfo -JiraEmail $DefaultContactEmail
         }
 
@@ -618,18 +618,18 @@ function Invoke-TicketProcess
     {
         If ($Issue.customfield_10313 -eq $Null)
         {
-            Write-Output "No CW Ticket # found for this Jira issue."
+            Write-Log "No CW Ticket # found for this Jira issue."
             $Ticket = New-CWTicket -Ticket $Issue -BoardName "$BoardName" -Key $Key
 
             If($Ticket -eq $False)
             {
-                Write-Output "Failed to Create CW Ticket for Jira Issue $($Issue.id)"
+                Write-Log "Failed to Create CW Ticket for Jira Issue $($Issue.id)"
             }
 
-            Write-Output "CW Ticket #$($ticket.id) created."
+            Write-Log "CW Ticket #$($ticket.id) created."
             Edit-JiraIssue -IssueID "$($Worklog.issue.id)" -CWTicketID "$($Ticket.id)"
             $issue.customfield_10313 = $Ticket.id 
-            Write-Output "CW Ticket #$($ticket.id) mapped in JIRA."
+            Write-Log "CW Ticket #$($ticket.id) mapped in JIRA."
         }
 
         Else
@@ -638,17 +638,17 @@ function Invoke-TicketProcess
 
             If($CurrentTicket.id -ne $Issue.customfield_10313)
             {
-                Write-Output "CW Ticket ID #$($Issue.customfield_10313) does not exist."
+                Write-Log "CW Ticket ID #$($Issue.customfield_10313) does not exist."
                 $Ticket = New-CWTicket -Ticket $Issue -BoardName "$BoardName" -Key $Key
-                Write-Output "CW Ticket #$($ticket.id) created."
+                Write-Log "CW Ticket #$($ticket.id) created."
                 Edit-JiraIssue -IssueID "$($Worklog.issue.id)" -CWTicketID "$($Ticket.id)"
                 $issue.customfield_10313 = $Ticket.id 
-                Write-Output "CW Ticket #$($ticket.id) mapped in JIRA." 
+                Write-Log "CW Ticket #$($ticket.id) mapped in JIRA." 
             }
 
             Else
             {
-                Write-Output "CW Ticket #$($Issue.customfield_10313) is already correctly mapped."
+                Write-Log "CW Ticket #$($Issue.customfield_10313) is already correctly mapped."
             }
         }
     }
@@ -668,7 +668,7 @@ function Invoke-WorklogProcess
 
     Process
     {
-        Write-Output "Beginning Time Entry Checks."
+        Write-Log "Beginning Time Entry Checks."
 
         [ARRAY]$NewTimeEntries = @()
 
@@ -709,12 +709,12 @@ function Invoke-WorklogProcess
                     
                 If ($OpenIt.status.name -eq $Global:ReopenStatusName)
                 {
-                    Write-Output "CW Ticket #$($Issue.customfield_10313) has been re-opened for posting time."
+                    Write-Log "CW Ticket #$($Issue.customfield_10313) has been re-opened for posting time."
                 }
 
                 Else
                 {
-                    Write-Output "Failed to re-open CW Ticket #$($Issue.customfield_10313)"
+                    Write-Log "Failed to re-open CW Ticket #$($Issue.customfield_10313)"
                     break;
                 }
             }
@@ -723,20 +723,20 @@ function Invoke-WorklogProcess
 
                 If($TimeEntry -eq 'Something went wrong.')
                 {
-                    Write-Output "Jira Time Entry ID #$($Worklog.id) occurred in a previous time period."
+                    Write-Log "Jira Time Entry ID #$($Worklog.id) occurred in a previous time period."
                 }
 
                 Else
                 {
-                    Write-output "New Time Entry Created."
-                    Write-Output "Jira Time Entry ID #$($Worklog.id) | Time Logged = $($Worklog.timespentseconds/60/60) Hours"
+                    Write-Log "New Time Entry Created."
+                    Write-Log "Jira Time Entry ID #$($Worklog.id) | Time Logged = $($Worklog.timespentseconds/60/60) Hours"
                 }
      
         }
 
         Else
         {
-            Write-Output "Jira Time Entry ID #$($Worklog.id) has already been logged." 
+            Write-Log "Jira Time Entry ID #$($Worklog.id) has already been logged." 
         }
 
 }
@@ -808,7 +808,7 @@ Function Get-ProperUserInfo
 
     If($ContactID -eq $False)
     {
-        Write-Output "Unable to retrieve a contact for Firstname: $Firstname Lastname: $Lastname CompanyID: $CompanyID"
+        Write-Log "Unable to retrieve a contact for Firstname: $Firstname Lastname: $Lastname CompanyID: $CompanyID"
         $Contactid = ''
     }
 
@@ -879,15 +879,42 @@ $EndOfWeek = ((($StartOfWeek.AddDays(6)).addhours(23)).addminutes(59)).addsecond
 Return $CurrentWeek
 }
 
+Function Write-Log
+{
+	<#
+	.SYNOPSIS
+		A function to write ouput messages to a logfile.
+	
+	.DESCRIPTION
+		This function is designed to send timestamped messages to a logfile of your choosing.
+		Use it to replace something like write-host for a more long term log.
+	
+	.PARAMETER StrMessage
+		The message being written to the log file.
+	
+	.EXAMPLE
+		PS C:\> Write-Log -StrMessage 'This is the message being written out to the log.' 
+	
+	.NOTES
+		N/A
+#>
+	
+	Param
+	(
+		[Parameter(Mandatory = $True, Position = 0)]
+		[String]$Message
+	)
+
+    
+	add-content -path $LogFilePath -value ($Message)
+    Write-Output $Message
+}
+
 ####################################################################
 #Variable Declarations
 $ErrorActionPreference = 'Continue'
 $VerbosePreference = 'SilentlyContinue'
-
-#Arrays
 [Array]$arrUsernames = @('cvalentine','sbakan','bwhitmire')
-
-#Strings
 [String]$CWServerRoot = "https://cw.connectwise.net/"
 [String]$JiraServerRoot = "https://jira-dev.labtechsoftware.com/"
 [String]$ImpersonationMember = 'jira'
@@ -897,9 +924,10 @@ $VerbosePreference = 'SilentlyContinue'
 [String]$Global:OpenStatusValue = '6952'
 [String]$Global:ClosedStatusValue = '6951'
 [String]$Global:ReopenStatusName = 'New'
-
-#Ints
 [Int]$MaxResults = '250'
+[String]$LogFilePath = "C:\Scheduled Tasks\Logs\Jira-CW-Doc-Team.txt"
+
+Remove-Item $LogFilePath -Force -ErrorAction 'SilentlyContinue'
 
 #Credentials
 $Global:JiraInfo = New-Object PSObject -Property @{
@@ -920,27 +948,27 @@ $WeekInfo = Get-Week -Weekday (get-date)
 [String]$WeekStart = "$($WeekInfo.start.Year)`-$($WeekInfo.start.month)`-$($WeekInfo.start.day)"
 [String]$WeekEnd = "$($WeekInfo.end.Year)`-$($WeekInfo.end.month)`-$($WeekInfo.end.day)"
 
-Write-output "This Week is $Weekstart - $Weekend"
+Write-Log "This Week is $Weekstart - $Weekend"
 
 Foreach($User in $arrUsernames)
 {
-    Write-Output "-----------------------------------------------"
-    Write-output "Beginning Processing User: $User"
+    Write-Log "-----------------------------------------------"
+    Write-Log "Beginning Processing User: $User"
     $UserWorklogs = Get-Worklogs -username $User -dateFrom $WeekStart -dateTo $WeekEnd
 
     If($UserWorklogs -eq $False)
     {
-        Write-Output "No Time Entries for User: $User"
+        Write-Log "No Time Entries for User: $User"
     }
 
     Else
     {
-        Write-Output "Time Entries Found for $User : $(($Userworklogs | measure-object).count)"
+        Write-Log "Time Entries Found for $User : $(($Userworklogs | measure-object).count)"
         [INT]$Counter = '1'
         Foreach($Worklog in $UserWorklogs)
         {
-            Write-Output "-----------------------------------------------"
-            Write-output "Processing $Counter of $(($Userworklogs | measure-object).count)"
+            Write-Log "-----------------------------------------------"
+            Write-Log "Processing $Counter of $(($Userworklogs | measure-object).count)"
             $Issue = Get-Issue -IssueID "$($worklog.issue.id)"
             Invoke-TicketProcess -Issue $Issue -Boardname $Boardname -Key $($Worklog.issue.key) -Worklog $Worklog
             Invoke-WorklogProcess -Issue $Issue -Worklog $Worklog -ClosedStatus $ClosedStatus
@@ -948,12 +976,12 @@ Foreach($User in $arrUsernames)
             #Close the ticket in CW if its closed in Jira
             If($Issue.status.name -eq 'Closed')
             {
-                Write-Output "Jira Issue is closed."
+                Write-Log "Jira Issue is closed."
                 $ISClosed = Get-cwticket -TicketID $($Issue.customfield_10313)
             
                 If($ISClosed.status.name -eq $ClosedStatus)
                 {
-                    Write-Output "CW Ticket #$($Issue.customfield_10313) is already closed."
+                    Write-Log "CW Ticket #$($Issue.customfield_10313) is already closed."
                 }
             
                 Else
@@ -963,12 +991,12 @@ Foreach($User in $arrUsernames)
 
                     If ($CloseIt.status.name -eq $ClosedStatus)
                     {
-                        Write-Output "CW Ticket #$($IsClosed.id) has been closed."
+                        Write-Log "CW Ticket #$($IsClosed.id) has been closed."
                     }
 
                     Else
                     {
-                        Write-Output "Failed to close CW Ticket #$($IsClosed.id)"
+                        Write-Log "Failed to close CW Ticket #$($IsClosed.id)"
                     }
                 }
             }
