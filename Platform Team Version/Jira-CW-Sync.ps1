@@ -942,10 +942,18 @@ PrivateKey = 'yLubF4Kfz4gWKBzU'
 [string]$Authstring  = $CWInfo.company + '+' + $CWInfo.publickey + ':' + $CWInfo.privatekey
 $encodedAuth = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(($Authstring)));
 
-#Get Week Information
-$WeekInfo = Get-Week -Weekday (get-date)
-[String]$WeekStart = "$($WeekInfo.start.Year)`-$($WeekInfo.start.month)`-$($WeekInfo.start.day)"
-[String]$WeekEnd = "$($WeekInfo.end.Year)`-$($WeekInfo.end.month)`-$($WeekInfo.end.day)"
+#Deprecated this section for now. The problem being that people go back to previous weeks and 
+#make time entries to finish up their timesheets on monday. The script wasn't catching those.
+<#Get Week Information
+#$WeekInfo = Get-Week -Weekday (get-date)
+#[String]$WeekStart = "$($WeekInfo.start.Year)`-$($WeekInfo.start.month)`-$($WeekInfo.start.day)"
+#[String]$WeekEnd = "$($WeekInfo.end.Year)`-$($WeekInfo.end.month)`-$($WeekInfo.end.day)"
+#>
+
+$StartRange = (get-date).AddDays(-7)
+$EndRange = (Get-Date)
+[String]$WeekStart = "$($StartRange.Year)`-$($StartRange.month)`-$($StartRange.day)"
+[String]$WeekEnd = "$($EndRange.Year)`-$($EndRange.month)`-$($EndRange.day)"
 
 Write-Log "This Week is $Weekstart - $Weekend"
 
