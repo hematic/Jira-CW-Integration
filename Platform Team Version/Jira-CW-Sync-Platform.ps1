@@ -29,9 +29,9 @@ Function Get-Worklogs
 	(
 		[Parameter(Mandatory = $true,Position = 0)]
 		[String]$dateFrom,
-		[Parameter(Mandatory = $true,Position = 0)]
+		[Parameter(Mandatory = $true,Position = 1)]
 		[String]$dateTo,
-		[Parameter(Mandatory = $true,Position = 0)]
+		[Parameter(Mandatory = $true,Position = 2)]
 		[String]$username
 	)
 
@@ -100,7 +100,7 @@ Function Edit-JiraIssue
 	param
 	(
 		[Parameter(Mandatory = $True,Position = 0)]
-		[INT]$IssueID,
+		[String]$IssueID,
 		[Parameter(Mandatory = $True,Position = 1)]
 		[String]$CWTicketID
 	)
@@ -362,7 +362,7 @@ function New-CWTicket
         [Object]$Ticket,
         [Parameter(Mandatory = $true,Position = 1,ValueFromPipeline,ValueFromPipelineByPropertyName)]
         [String]$BoardName,
-        [Parameter(Mandatory = $true,Position = 1,ValueFromPipeline,ValueFromPipelineByPropertyName)]
+        [Parameter(Mandatory = $true,Position = 2,ValueFromPipeline,ValueFromPipelineByPropertyName)]
         [String]$Key
     )
 
@@ -375,6 +375,14 @@ function New-CWTicket
 
     Process
     {
+        Write-Log -Message "[DEBUG] Initial Summary = $($Ticket.summary)"
+
+        If($($Ticket.summary) -eq $Null -or $($Ticket.summary) -eq "")
+        {
+            Write-Log "$($Ticket | Format-Table | Out-String)"
+            Write-log "$($Error | Out-string)"
+        }
+
         #Making sure the summary field is formatted properly
         ###############################################################
         If([INT]$($Ticket.Summary.length) -gt 90)
@@ -397,9 +405,11 @@ function New-CWTicket
             $UserInfo = Get-ProperUserInfo -JiraEmail $($Ticket.assignee.emailaddress)
         }
 
+        Write-log "[DEBUG]Summary = [JIRA][$Key] - $Summary"
+
         $Body= @"
 {
-    "summary"   :    "[JIRA][$($Key)] - $($Summary)",
+    "summary"   :    "[JIRA][$Key] - $Summary",
     "board"     :    {"name": "$BoardName"},
     "status"    :    {"name": "New"},
     "company"   :    {"id": "$($UserInfo.CompanyID)"},
@@ -452,7 +462,7 @@ Function Close-CWTicket
         $Body= @"
         [
         {
-            "op" : "replace", "path": "/status/id", "value": "7315"
+            "op" : "replace", "path": "/status/id", "value": "$Global:ClosedStatusValue"
         }
         ]
 "@
@@ -555,8 +565,8 @@ function New-CWTimeEntry
         [String]$Created = Get-Date ($StartedUniversal) -format "yyyy-MM-ddTHH:mm:ssZ"
         [String]$Ended = Get-Date ($Ended) -format "yyyy-MM-ddTHH:mm:ssZ"
 
-        #Member Magic
         $MemberInfo = Get-ProperUserInfo -JiraEmail "$($Worklog.author.name)@labtechsoftware.com" -MemberCheck '1'
+        $SanitizedComment = Format-sanitizedstring -InputString $($WorkLog.comment)
 
         $Body= @"
 {
@@ -564,7 +574,7 @@ function New-CWTimeEntry
     "chargeToId"     : "$CWTicketID",
     "timeStart"      : "$Created",
     "timeend"        : "$Ended",
-    "internalnotes"  : "[JiraID!!$($Worklog.id)!!] $($Worklog.comment)",
+    "internalnotes"  : "[JiraID!!$($Worklog.id)!!] $($SanitizedComment)",
     "company"        : {"id": "$($Memberinfo.CompanyID)"},
     "member"         : {"id": "$($Memberinfo.MemberID)"},
     "billableOption" : "DoNotBill"
@@ -606,9 +616,9 @@ function Invoke-TicketProcess
         [PSObject]$Issue,
         [Parameter(Mandatory = $true,Position = 1,ValueFromPipeline,ValueFromPipelineByPropertyName)]
         [String]$Boardname,
-        [Parameter(Mandatory = $true,Position = 1,ValueFromPipeline,ValueFromPipelineByPropertyName)]
+        [Parameter(Mandatory = $true,Position = 2,ValueFromPipeline,ValueFromPipelineByPropertyName)]
         [String]$Key,
-        [Parameter(Mandatory = $true,Position = 1,ValueFromPipeline,ValueFromPipelineByPropertyName)]
+        [Parameter(Mandatory = $true,Position = 3,ValueFromPipeline,ValueFromPipelineByPropertyName)]
         [Object]$Worklog
     )
 
@@ -658,15 +668,14 @@ function Invoke-WorklogProcess
     (
         [Parameter(Mandatory = $true,Position = 0,ValueFromPipeline,ValueFromPipelineByPropertyName)]
         [Object]$Issue,
-        [Parameter(Mandatory = $true,Position = 0,ValueFromPipeline,ValueFromPipelineByPropertyName)]
+        [Parameter(Mandatory = $true,Position = 1,ValueFromPipeline,ValueFromPipelineByPropertyName)]
         [Object]$Worklog,
-        [Parameter(Mandatory = $true,Position = 0,ValueFromPipeline,ValueFromPipelineByPropertyName)]
+        [Parameter(Mandatory = $true,Position = 2,ValueFromPipeline,ValueFromPipelineByPropertyName)]
         [String]$ClosedStatus
     )
 
     Process
     {
-
         [ARRAY]$NewTimeEntries = @()
 
         $Ticket = Get-cwticket -TicketID $($Issue.customfield_10313)
@@ -911,7 +920,6 @@ Function Write-Log
 #Variable Declarations
 $ErrorActionPreference = 'Continue'
 $VerbosePreference = 'SilentlyContinue'
-
 [Array]$arrUsernames = @('pmarshall','mduren','mbastian','dmiller','cswain','aquenneville')
 [String]$CWServerRoot = "https://cw.connectwise.net/"
 [String]$JiraServerRoot = "https://jira.labtechsoftware.com/"
@@ -919,6 +927,7 @@ $VerbosePreference = 'SilentlyContinue'
 [String]$DefaultContactEmail = 'pmarshall@labtechsoftware.com'
 [String]$Boardname = 'LT-Infrastructure'
 [String]$ClosedStatus = 'Completed Contact Confirmed'
+[String]$Global:ClosedStatusValue = '7315'
 [String]$Global:OpenStatusValue = '5800'
 [String]$Global:ReopenStatusName = 'New (Re-Open)'
 [Int]$MaxResults = '250'
@@ -942,14 +951,6 @@ PrivateKey = 'yLubF4Kfz4gWKBzU'
 [string]$Authstring  = $CWInfo.company + '+' + $CWInfo.publickey + ':' + $CWInfo.privatekey
 $encodedAuth = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(($Authstring)));
 
-#Deprecated this section for now. The problem being that people go back to previous weeks and 
-#make time entries to finish up their timesheets on monday. The script wasn't catching those.
-<#Get Week Information
-#$WeekInfo = Get-Week -Weekday (get-date)
-#[String]$WeekStart = "$($WeekInfo.start.Year)`-$($WeekInfo.start.month)`-$($WeekInfo.start.day)"
-#[String]$WeekEnd = "$($WeekInfo.end.Year)`-$($WeekInfo.end.month)`-$($WeekInfo.end.day)"
-#>
-
 $StartRange = (get-date).AddDays(-7)
 $EndRange = (Get-Date)
 [String]$WeekStart = "$($StartRange.Year)`-$($StartRange.month)`-$($StartRange.day)"
@@ -960,7 +961,7 @@ Write-Log "This Week is $Weekstart - $Weekend"
 Foreach($User in $arrUsernames)
 {
     Write-Log "-----------------------------------------------"
-    Write-Log "BEGIN PROCESSING USER: $User"
+    Write-Log "Beginning Processing User: $User"
     $UserWorklogs = Get-Worklogs -username $User -dateFrom $WeekStart -dateTo $WeekEnd
 
     If($UserWorklogs -eq $False)
@@ -977,6 +978,12 @@ Foreach($User in $arrUsernames)
             Write-Log "-----------------------------------------------"
             Write-Log "Processing $Counter of $(($Userworklogs | measure-object).count)"
             $Issue = Get-Issue -IssueID "$($worklog.issue.id)"
+
+            If ($Issue -eq $False -or $Issue -eq $Null)
+            {
+                Write-log "This damn issue didnt exist somehow."
+            }
+
             Invoke-TicketProcess -Issue $Issue -Boardname $Boardname -Key $($Worklog.issue.key) -Worklog $Worklog
             Invoke-WorklogProcess -Issue $Issue -Worklog $Worklog -ClosedStatus $ClosedStatus
             
@@ -993,16 +1000,16 @@ Foreach($User in $arrUsernames)
             
                 Else
                 {
-                    $CloseIt = Close-CWTicket -TicketID $($Issue.customfield_10313)
+                    $CloseIt = Close-CWTicket -TicketID $($IsClosed.id)
 
-                    If ($CloseIt.status.name -eq 'Completed Contact Confirmed')
+                    If ($CloseIt.status.name -eq $ClosedStatus)
                     {
-                        Write-Log "CW Ticket #$($Issue.CWTicketID) has been closed."
+                        Write-Log "CW Ticket #$($IsClosed.id) has been closed."
                     }
 
                     Else
                     {
-                        Write-Log "Failed to close CW Ticket #$($Issue.CWTicketID)"
+                        Write-Log "Failed to close CW Ticket #$($IsClosed.id)"
                     }
                 }
             }

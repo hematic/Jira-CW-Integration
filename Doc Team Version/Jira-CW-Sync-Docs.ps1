@@ -9,7 +9,6 @@ Function Get-Issue
 		[INT]$IssueID
 	)
 
-    #$RestApiURI = $JiraServerRoot + "rest/agile/1.0/issue/$IssueID"
     $RestApiURI = $JiraServerRoot + "rest/api/2/issue/$IssueID"
     $JSONResponse = Invoke-RestMethod -Uri $restapiuri -Headers @{ "Authorization" = "Basic $JiraCredentials" } -ContentType application/json -method Get
 
@@ -30,9 +29,9 @@ Function Get-Worklogs
 	(
 		[Parameter(Mandatory = $true,Position = 0)]
 		[String]$dateFrom,
-		[Parameter(Mandatory = $true,Position = 0)]
+		[Parameter(Mandatory = $true,Position = 1)]
 		[String]$dateTo,
-		[Parameter(Mandatory = $true,Position = 0)]
+		[Parameter(Mandatory = $true,Position = 2)]
 		[String]$username
 	)
 
@@ -363,7 +362,7 @@ function New-CWTicket
         [Object]$Ticket,
         [Parameter(Mandatory = $true,Position = 1,ValueFromPipeline,ValueFromPipelineByPropertyName)]
         [String]$BoardName,
-        [Parameter(Mandatory = $true,Position = 1,ValueFromPipeline,ValueFromPipelineByPropertyName)]
+        [Parameter(Mandatory = $true,Position = 2,ValueFromPipeline,ValueFromPipelineByPropertyName)]
         [String]$Key
     )
 
@@ -376,15 +375,23 @@ function New-CWTicket
 
     Process
     {
-        #Making sure the summary field is formatted properly
-        ###############################################################
-        If([INT]$($Ticket.Summary.length) -gt 60)
+        Write-Log -Message "[DEBUG] Initial Summary = $($Ticket.summary)"
+
+        If($($Ticket.summary) -eq $Null -or $($Ticket.summary) -eq "")
         {
-            $Summary = $(($Ticket.Summary).substring(0,60))
+            Write-Log "$($Ticket | Format-Table | Out-String)"
+            Write-log "$($Error | Out-string)"
         }
 
-        $SanitizedSummary = Format-SanitizedString -InputString $Summary
-        Write-Log "Ticket Summary is $SanitizedSummary"
+        #Making sure the summary field is formatted properly
+        ###############################################################
+        If([INT]$($Ticket.Summary.length) -gt 90)
+        {
+            $Summary = $($Ticket.Summary.substring(0,75))
+        }
+
+        $Summary = Format-SanitizedString -InputString $($Ticket.Summary)
+        $Summary = $Summary.Replace('"', "'")
         ###############################################################
     
         If(!$($Ticket.assignee.emailaddress))
@@ -398,9 +405,11 @@ function New-CWTicket
             $UserInfo = Get-ProperUserInfo -JiraEmail $($Ticket.assignee.emailaddress)
         }
 
+        Write-log "[DEBUG]Summary = [JIRA][$Key] - $Summary"
+
         $Body= @"
 {
-    "summary"   :    "[JIRA][$($Key)] - $($SanitizedSummary)",
+    "summary"   :    "[JIRA][$Key] - $Summary",
     "board"     :    {"name": "$BoardName"},
     "status"    :    {"name": "New"},
     "company"   :    {"id": "$($UserInfo.CompanyID)"},
@@ -556,9 +565,8 @@ function New-CWTimeEntry
         [String]$Created = Get-Date ($StartedUniversal) -format "yyyy-MM-ddTHH:mm:ssZ"
         [String]$Ended = Get-Date ($Ended) -format "yyyy-MM-ddTHH:mm:ssZ"
 
-        #Member Magic
         $MemberInfo = Get-ProperUserInfo -JiraEmail "$($Worklog.author.name)@labtechsoftware.com" -MemberCheck '1'
-        $SanitizedComment = Format-sanitizedstring -InputString $WorkLog.comment
+        $SanitizedComment = Format-sanitizedstring -InputString $($WorkLog.comment)
 
         $Body= @"
 {
@@ -608,9 +616,9 @@ function Invoke-TicketProcess
         [PSObject]$Issue,
         [Parameter(Mandatory = $true,Position = 1,ValueFromPipeline,ValueFromPipelineByPropertyName)]
         [String]$Boardname,
-        [Parameter(Mandatory = $true,Position = 1,ValueFromPipeline,ValueFromPipelineByPropertyName)]
+        [Parameter(Mandatory = $true,Position = 2,ValueFromPipeline,ValueFromPipelineByPropertyName)]
         [String]$Key,
-        [Parameter(Mandatory = $true,Position = 1,ValueFromPipeline,ValueFromPipelineByPropertyName)]
+        [Parameter(Mandatory = $true,Position = 3,ValueFromPipeline,ValueFromPipelineByPropertyName)]
         [Object]$Worklog
     )
 
@@ -660,16 +668,14 @@ function Invoke-WorklogProcess
     (
         [Parameter(Mandatory = $true,Position = 0,ValueFromPipeline,ValueFromPipelineByPropertyName)]
         [Object]$Issue,
-        [Parameter(Mandatory = $true,Position = 0,ValueFromPipeline,ValueFromPipelineByPropertyName)]
+        [Parameter(Mandatory = $true,Position = 1,ValueFromPipeline,ValueFromPipelineByPropertyName)]
         [Object]$Worklog,
-        [Parameter(Mandatory = $true,Position = 0,ValueFromPipeline,ValueFromPipelineByPropertyName)]
+        [Parameter(Mandatory = $true,Position = 2,ValueFromPipeline,ValueFromPipelineByPropertyName)]
         [String]$ClosedStatus
     )
 
     Process
     {
-        Write-Log "Beginning Time Entry Checks."
-
         [ARRAY]$NewTimeEntries = @()
 
         $Ticket = Get-cwticket -TicketID $($Issue.customfield_10313)
@@ -736,7 +742,7 @@ function Invoke-WorklogProcess
 
         Else
         {
-            Write-Log "Jira Time Entry ID #$($Worklog.id) has already been logged." 
+            Write-Log "Jira Time Entry ID #$($Worklog.id) is already logged." 
         }
 
 }
@@ -929,12 +935,14 @@ $VerbosePreference = 'SilentlyContinue'
 
 Remove-Item $LogFilePath -Force -ErrorAction 'SilentlyContinue'
 
-#Credentials
+#Jira Credentials
 $Global:JiraInfo = New-Object PSObject -Property @{
 User = 'cwintegration'
 Password = '@#WE23we4'
 }
 $JiraCredentials = Set-JiraCreds
+
+#CW Credentials
 $Global:CWInfo = New-Object PSObject -Property @{
 Company = 'connectwise'
 PublicKey = '4hc35v3aNRTjib9W'
@@ -943,20 +951,10 @@ PrivateKey = 'yLubF4Kfz4gWKBzU'
 [string]$Authstring  = $CWInfo.company + '+' + $CWInfo.publickey + ':' + $CWInfo.privatekey
 $encodedAuth = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(($Authstring)));
 
-
-#Deprecated this section for now. The problem being that people go back to previous weeks and 
-#make time entries to finish up their timesheets on monday. The script wasn't catching those.
-<#Get Week Information
-#$WeekInfo = Get-Week -Weekday (get-date)
-#[String]$WeekStart = "$($WeekInfo.start.Year)`-$($WeekInfo.start.month)`-$($WeekInfo.start.day)"
-#[String]$WeekEnd = "$($WeekInfo.end.Year)`-$($WeekInfo.end.month)`-$($WeekInfo.end.day)"
-#>
-
 $StartRange = (get-date).AddDays(-7)
 $EndRange = (Get-Date)
 [String]$WeekStart = "$($StartRange.Year)`-$($StartRange.month)`-$($StartRange.day)"
 [String]$WeekEnd = "$($EndRange.Year)`-$($EndRange.month)`-$($EndRange.day)"
-
 
 Write-Log "This Week is $Weekstart - $Weekend"
 
@@ -973,13 +971,19 @@ Foreach($User in $arrUsernames)
 
     Else
     {
-        Write-Log "Time Entries Found for $User : $(($Userworklogs | measure-object).count)"
+        Write-Log "Time Entries Found: $(($Userworklogs | measure-object).count)"
         [INT]$Counter = '1'
         Foreach($Worklog in $UserWorklogs)
         {
             Write-Log "-----------------------------------------------"
             Write-Log "Processing $Counter of $(($Userworklogs | measure-object).count)"
             $Issue = Get-Issue -IssueID "$($worklog.issue.id)"
+
+            If ($Issue -eq $False -or $Issue -eq $Null)
+            {
+                Write-log "This damn issue didnt exist somehow."
+            }
+
             Invoke-TicketProcess -Issue $Issue -Boardname $Boardname -Key $($Worklog.issue.key) -Worklog $Worklog
             Invoke-WorklogProcess -Issue $Issue -Worklog $Worklog -ClosedStatus $ClosedStatus
             
@@ -991,12 +995,11 @@ Foreach($User in $arrUsernames)
             
                 If($ISClosed.status.name -eq $ClosedStatus)
                 {
-                    Write-Log "CW Ticket #$($Issue.customfield_10313) is already closed."
+                    Write-Log "CW Ticket #$($Issue.customfield_10313) is closed."
                 }
             
                 Else
                 {
-                    
                     $CloseIt = Close-CWTicket -TicketID $($IsClosed.id)
 
                     If ($CloseIt.status.name -eq $ClosedStatus)
