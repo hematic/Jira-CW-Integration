@@ -9,8 +9,19 @@ Function Get-Issue
 		[INT]$IssueID
 	)
 
-    $RestApiURI = $JiraServerRoot + "rest/agile/1.0/issue/$IssueID"
-    $JSONResponse = Invoke-RestMethod -Uri $restapiuri -Headers @{ "Authorization" = "Basic $JiraCredentials" } -ContentType application/json -method Get
+    $RestApiURI = $JiraServerRoot + "rest/api/2/issue/$IssueID"
+
+    Try
+    {
+        $JSONResponse = Invoke-RestMethod -Uri $restapiuri -Headers @{ "Authorization" = "Basic $JiraCredentials" } -ContentType application/json -method Get
+    }
+
+    Catch
+    {
+        Write-log "$($_.exception | Format-list -force)"
+        Return "TIMEOUT"
+    }
+
 
     If($JSONResponse.fields)
     {
@@ -19,7 +30,7 @@ Function Get-Issue
 
     Else
     {
-        Return $False
+        Return "UNKNOWN ERROR"
     }
 }
 
@@ -975,47 +986,81 @@ Foreach($User in $arrUsernames)
         [INT]$Counter = '1'
         Foreach($Worklog in $UserWorklogs)
         {
+            [Int]$Break = 0
             Write-Log "-----------------------------------------------"
             Write-Log "Processing $Counter of $(($Userworklogs | measure-object).count)"
             $Issue = Get-Issue -IssueID "$($worklog.issue.id)"
 
-            If ($Issue -eq $False -or $Issue -eq $Null)
+            If($Issue -eq "TIMEOUT")
             {
-                Write-log "This damn issue didnt exist somehow."
+                Write-Log "Timeout Detected. Sleeping for 1 Second."
+                Start-Sleep -Seconds 1
+                $Issue = Get-Issue -IssueID "$($worklog.issue.id)"
+                
+                If($Issue -eq "Timeout")
+                {
+                    Write-Log "2nd Timeout Detected. Sleeping for 5 seconds."
+                    Start-Sleep -Seconds 5
+                    $Issue = Get-Issue -IssueID "$($worklog.issue.id)"
+
+                    If($Issue -eq "Timeout")
+                    {
+                        Write-Log "Third Timeout Detected. Breaking this loop."
+                        [Int]$Break++
+                    }
+                } 
             }
 
-            Invoke-TicketProcess -Issue $Issue -Boardname $Boardname -Key $($Worklog.issue.key) -Worklog $Worklog
-            Invoke-WorklogProcess -Issue $Issue -Worklog $Worklog -ClosedStatus $ClosedStatus
-            
-            #Close the ticket in CW if its closed in Jira
-            If($Issue.status.name -eq 'Closed')
+            ElseIf($Issue -eq "UNKNOWN ERROR")
             {
-                Write-Log "Jira Issue is closed."
-                $ISClosed = Get-cwticket -TicketID $($Issue.customfield_10313)
-            
-                If($ISClosed.status.name -eq $ClosedStatus)
-                {
-                    Write-Log "CW Ticket #$($Issue.customfield_10313) is closed."
-                }
-            
-                Else
-                {
-                    $CloseIt = Close-CWTicket -TicketID $($IsClosed.id)
+                Write-Log "Encountered Error Retrieving Issue information"
+                Write-Log "This worklog will not be processed this run."
+                Write-Log "Worklog: $($Worklog | Format-List -Force)"
+                [Int]$Break++
+            }
 
-                    If ($CloseIt.status.name -eq $ClosedStatus)
+            ElseIf ($Issue -eq $False -or $Issue -eq $Null)
+            {
+                Write-log "This damn issue didnt exist somehow."
+                Write-Log "This worklog will not be processed this run."
+                Write-Log "Worklog: $($Worklog | Format-List -Force)"
+                [Int]$Break++
+            }
+
+            If($Break -eq 0)
+            {
+                Invoke-TicketProcess -Issue $Issue -Boardname $Boardname -Key $($Worklog.issue.key) -Worklog $Worklog
+                Invoke-WorklogProcess -Issue $Issue -Worklog $Worklog -ClosedStatus $ClosedStatus
+            
+                #Close the ticket in CW if its closed in Jira
+                If($Issue.status.name -eq 'Closed')
+                {
+                    Write-Log "Jira Issue is closed."
+                    $ISClosed = Get-cwticket -TicketID $($Issue.customfield_10313)
+            
+                    If($ISClosed.status.name -eq $ClosedStatus)
                     {
-                        Write-Log "CW Ticket #$($IsClosed.id) has been closed."
+                        Write-Log "CW Ticket #$($Issue.customfield_10313) is closed."
                     }
-
+            
                     Else
                     {
-                        Write-Log "Failed to close CW Ticket #$($IsClosed.id)"
+                        $CloseIt = Close-CWTicket -TicketID $($IsClosed.id)
+
+                        If ($CloseIt.status.name -eq $ClosedStatus)
+                        {
+                            Write-Log "CW Ticket #$($IsClosed.id) has been closed."
+                        }
+
+                        Else
+                        {
+                            Write-Log "Failed to close CW Ticket #$($IsClosed.id)"
+                        }
                     }
                 }
             }
 
             $Counter++
-        }
-
       }
+}
 }
