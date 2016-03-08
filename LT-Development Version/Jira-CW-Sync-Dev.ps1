@@ -48,8 +48,31 @@ $Body= @"
 }
 "@
 
-    $RestApiURI = $JiraServerRoot + "rest/api/2/issue/$IssueID"
-    $JSONResponse = Invoke-RestMethod -Uri $restapiuri -Headers @{ "Authorization" = "Basic $JiraCredentials" } -ContentType application/json -Body $Body -method Put
+    $RestApiURI = $JiraServerRoot + "rest/api/latest/issue/$IssueID"
+    
+    Try
+    {    
+        $JSONResponse = Invoke-RestMethod -Uri $restapiuri -Headers @{ "Authorization" = "Basic $JiraCredentials" } -ContentType application/json -Body $Body -method Put
+        $JsonResponse2 = Get-Issue -IssueID $IssueID
+    }
+
+    Catch
+    {
+        $Output = $_.exception | Format-List -force | Out-String
+        Write-log "[*ERROR*] : $Output"    
+    }
+
+    Write-Verbose "$($JsonResponse2.customfield_10313)"
+
+    If($($JsonResponse2.customfield_10313) -eq $CWTicketID)
+    {
+        Return "Success"    
+    }
+
+    Else
+    {
+        Return "Failed to Set CustomField_10313"
+    }
 }
 
 ####################################################################
@@ -63,7 +86,7 @@ Function Get-CWTicket
     (
     	[Parameter(Mandatory = $true,Position = 0,ValueFromPipeline,ValueFromPipelineByPropertyName)]
         [ValidateNotNullorEmpty()]
-		[INT]$TicketID
+		[String]$TicketID
     )
 
     Begin
@@ -87,21 +110,22 @@ Function Get-CWTicket
 
         Catch
         {
-            $ErrorMessage = $_.exception.message
+            $Output = $_.exception | Format-List -force | Out-String
+            Write-log "[*ERROR*] : $Output"
         }
 
     }
     
     End
     {
-        If($JSONResponse)
+        If($JSONResponse.id -eq $TicketID)
         {
             Return $JSONResponse
         }
 
         Else
         {
-            Return $False
+            Return 'Bad Request'
         }
     }
 }
@@ -177,6 +201,12 @@ Function Process-IssuesObj
         Write-Log "Issue: $($Issue.key)"
         Write-log "CW Ticket ID: $($Issue.fields.customfield_10313)"
         $CWStatus = (get-cwticket -TicketID $($Issue.fields.customfield_10313)).status.name
+
+        If($CWStatus -eq "Bad Request")
+        {
+            Write-Log "Unable to Retrieve ConnectWise Ticket Information for CW Ticket : $($Issue.fields.customfield_10313)"
+            Return "Failed to Retrieve CW Ticket Data"
+        }
 
         If($($Issue.fields.status.name) -eq "Dev Queue" -and $CWStatus -ne "DEV-Pending fix (Core)")
         {
@@ -491,7 +521,12 @@ If($($RawData.GetType().fullname -eq 'System.Management.Automation.PSCustomObjec
 
     Foreach($Issue in $($RawData.issues))
     {
-        Process-IssuesObj -Issue $Issue
+        $ProcessResult = Process-IssuesObj -Issue $Issue
+
+        If($ProcessResult -eq "Failed to Retrieve CW Ticket Data")
+        {
+            Write-Log "Processing Issue"
+        }
     }
 }
 

@@ -18,7 +18,8 @@ Function Get-Issue
 
     Catch
     {
-        Write-log "$($_.exception | Format-list -force)"
+        $Output = $_.exception | Format-List -force | Out-String
+        Write-log "[*ERROR*] : $Output"
         Return "TIMEOUT"
     }
 
@@ -55,17 +56,28 @@ Function Get-Worklogs
     "username" = "$username"
     }
 
-    $JSONResponse = Invoke-RestMethod -Uri $restapiuri -Headers @{ "Authorization" = "Basic $JiraCredentials" } -Body $Body -ContentType application/json -method get
+    Try
+    {
+        $JSONResponse = Invoke-RestMethod -Uri $restapiuri -Headers @{ "Authorization" = "Basic $JiraCredentials" } -Body $Body -ContentType application/json -method get
+    }
 
-    If($JSONResponse)
+    Catch
+    {
+        $Output = $_.exception | Format-List -force | Out-String
+        Write-log "[*ERROR*] : $Output"
+        Return "Exception Caught"       
+    }
+
+    If($JSONResponse.id)
     {
         Return $JSONResponse
     }
 
     Else
     {
-        Return $False
+        Return "No Worklogs"
     }
+
 }
 
 Function Get-JiraUserInfo
@@ -82,16 +94,26 @@ Function Get-JiraUserInfo
     }
 
     $RestApiURI = $JiraServerRoot + "rest/api/2/user"
-    $JSONResponse = Invoke-RestMethod -Uri $restapiuri -Headers @{ "Authorization" = "Basic $JiraCredentials" } -body $Body -ContentType application/json -method Get
 
-    If($JSONResponse.displayname)
+    Try
     {
-        Return $JSONResponse.displayname
+        $JSONResponse = Invoke-RestMethod -Uri $restapiuri -Headers @{ "Authorization" = "Basic $JiraCredentials" } -body $Body -ContentType application/json -method Get
+    }
+
+    Catch
+    {
+        $Output = $_.exception | Format-List -force | Out-String
+        Write-log "[*ERROR*] : $Output"
+    }
+
+    If($JSONResponse)
+    {
+        Return $JSONResponse
     }
 
     Else
     {
-        Return $False
+        Return "No User"
     }
 
 }
@@ -126,7 +148,30 @@ $Body= @"
 "@
 
     $RestApiURI = $JiraServerRoot + "rest/api/latest/issue/$IssueID"
-    $JSONResponse = Invoke-RestMethod -Uri $restapiuri -Headers @{ "Authorization" = "Basic $JiraCredentials" } -ContentType application/json -Body $Body -method Put
+    
+    Try
+    {    
+        $JSONResponse = Invoke-RestMethod -Uri $restapiuri -Headers @{ "Authorization" = "Basic $JiraCredentials" } -ContentType application/json -Body $Body -method Put
+        $JsonResponse2 = Get-Issue -IssueID $IssueID
+    }
+
+    Catch
+    {
+        $Output = $_.exception | Format-List -force | Out-String
+        Write-log "[*ERROR*] : $Output"    
+    }
+
+    Write-Verbose "$($JsonResponse2.customfield_10313)"
+
+    If($($JsonResponse2.customfield_10313) -eq $CWTicketID)
+    {
+        Return "Success"    
+    }
+
+    Else
+    {
+        Return "Failed to Set CustomField_10313"
+    }
 }
 
 ####################################################################
@@ -140,7 +185,7 @@ Function Get-CWTicket
     (
     	[Parameter(Mandatory = $true,Position = 0,ValueFromPipeline,ValueFromPipelineByPropertyName)]
         [ValidateNotNullorEmpty()]
-		[INT]$TicketID
+		[String]$TicketID
     )
 
     Begin
@@ -164,21 +209,22 @@ Function Get-CWTicket
 
         Catch
         {
-            $ErrorMessage = $_.exception.message
+            $Output = $_.exception | Format-List -force | Out-String
+            Write-log "[*ERROR*] : $Output"
         }
 
     }
     
     End
     {
-        If($JSONResponse)
+        If($JSONResponse.id -eq $TicketID)
         {
             Return $JSONResponse
         }
 
         Else
         {
-            Return $False
+            Return 'Bad Request'
         }
     }
 }
@@ -207,19 +253,28 @@ Function Get-CWTimeEntries
     
     Process
     {   
-        $JSONResponse = Invoke-RestMethod -URI $BaseURI -Headers $Headers  -ContentType $ContentType -Method Get
+        Try
+        {
+            $JSONResponse = Invoke-RestMethod -URI $BaseURI -Headers $Headers  -ContentType $ContentType -Method Get
+        }
+
+        Catch
+        {
+            $Output = $_.exception | Format-List -force | Out-String
+            Write-log "[*ERROR*] : $Output"            
+        }
     }
 
     End
     {
-        If($JSONResponse)
+        If($JSONResponse -ne $Null -and $JSONResponse -ne '')
         {
             Return $JSONResponse
         }
 
         Else
         {
-            Return $False
+            Return "NO TIME ENTRIES"
         }
     }
 }
@@ -247,20 +302,29 @@ Function Get-TimeEntryDetails
     }
     
     Process
-    {   
-        $JSONResponse = Invoke-RestMethod -URI $BaseURI -Headers $Headers  -ContentType $ContentType -Method Get
+    {
+        Try
+        {   
+            $JSONResponse = Invoke-RestMethod -URI $BaseURI -Headers $Headers  -ContentType $ContentType -Method Get
+        }
+
+        Catch
+        {
+            $Output = $_.exception | Format-List -force | Out-String
+            Write-log "[*ERROR*] : $Output"          
+        }
     }
 
     End
     {
-        If($JSONResponse)
+        If($JSONResponse -ne $Null -and $JSONResponse -ne '')
         {
             Return $JSONResponse
         }
 
         Else
         {
-            Return $False
+            Return "NO TIME ENTRY DETAILS"
         }
     }
 }
@@ -293,20 +357,29 @@ Function Get-CWMember
     "conditions" = "emailaddress = '$EmailAddress'"
     
     }
-       
-        $JSONResponse = Invoke-RestMethod -URI $BaseURI -Headers $Headers -ContentType $ContentType -Body $Body -Method Get
+        
+        Try
+        {
+            $JSONResponse = Invoke-RestMethod -URI $BaseURI -Headers $Headers -ContentType $ContentType -Body $Body -Method Get
+        }
+
+        Catch
+        {
+            $Output = $_.exception | Format-List -force | Out-String
+            Write-log "[*ERROR*] : $Output"          
+        }
     }
 
     End
     {
-        If($JSONResponse)
+        If($JSONResponse -ne $Null -and $JSONResponse -ne '')
         {
             Return $JSONResponse
         }
 
         Else
         {
-            Return $False
+            Return "NO CW MEMBER DATA"
         }
     }
 }
@@ -342,20 +415,29 @@ Function Get-CWContact
         $Body = @{
     "conditions" = "firstname = '$First' AND lastname = '$Last' AND company/id =$CompanyID"
     }
-      
-        $JSONResponse = Invoke-RestMethod -URI $BaseURI -Headers $Headers -ContentType $ContentType -Body $Body -Method Get
+        
+        Try
+        {
+            $JSONResponse = Invoke-RestMethod -URI $BaseURI -Headers $Headers -ContentType $ContentType -Body $Body -Method Get
+        }
+
+        Catch
+        {
+            $Output = $_.exception | Format-List -force | Out-String
+            Write-log "[*ERROR*] : $Output"             
+        }
     }
 
     End
     {
-        If($JSONResponse)
+        If($JSONResponse -ne $Null -and $JSONResponse -ne '')
         {
             Return $JSONResponse.id
         }
 
         Else
         {
-            Return $False
+            Return "NO CW CONTACT DATA"
         }
     }
 }
@@ -396,12 +478,16 @@ function New-CWTicket
 
         #Making sure the summary field is formatted properly
         ###############################################################
-        If([INT]$($Ticket.Summary.length) -gt 90)
+        If([INT]$($Ticket.Summary.length) -gt 70)
         {
-            $Summary = $($Ticket.Summary.substring(0,75))
+            $Summary = $($Ticket.Summary.substring(0,69))
+        }
+        Else
+        {
+            $Summary = $($Ticket.summary)
         }
 
-        $Summary = Format-SanitizedString -InputString $($Ticket.Summary)
+        $Summary = Format-SanitizedString -InputString $Summary
         $Summary = $Summary.Replace('"', "'")
         ###############################################################
     
@@ -422,7 +508,7 @@ function New-CWTicket
 {
     "summary"   :    "[JIRA][$Key] - $Summary",
     "board"     :    {"name": "$BoardName"},
-    "status"    :    {"name": "New"},
+    "status"    :    {"name": "$Global:NewTicketStatusName"},
     "company"   :    {"id": "$($UserInfo.CompanyID)"},
     "contact"   :    {"id": "$($UserInfo.ContactID)"}
 }
@@ -431,19 +517,29 @@ function New-CWTicket
 'X-cw-overridessl' = "True"
 "Authorization"="Basic $encodedAuth"
 }
-        $JSONResponse = Invoke-RestMethod -URI $BaseURI -Headers $Headers -ContentType $ContentType -Method Post -Body $Body
+
+        Try
+        {
+            $JSONResponse = Invoke-RestMethod -URI $BaseURI -Headers $Headers -ContentType $ContentType -Method Post -Body $Body
+        }
+
+        Catch
+        {
+            $Output = $_.exception | Format-List -force | Out-String
+            Write-log "[*ERROR*] : $Output"         
+        }
     }
 
     End
     {
-        If($JSONResponse)
+        If($JSONResponse -ne $Null -and $JSONResponse -ne '')
         {
             Return $JSONResponse
         }
 
         Else
         {
-            Return $False
+            Return "CW TICKET CREATION FAILED"
         }
     }
 }
@@ -480,20 +576,29 @@ Function Close-CWTicket
      }
     
     Process
-    {      
-        $JSONResponse = Invoke-RestMethod -URI $BaseURI -Headers $Headers -Body $Body -ContentType $ContentType -Method Patch
+    {   
+        Try
+        {   
+            $JSONResponse = Invoke-RestMethod -URI $BaseURI -Headers $Headers -Body $Body -ContentType $ContentType -Method Patch
+        }
+
+        Catch
+        {
+            $Output = $_.exception | Format-List -force | Out-String
+            Write-log "[*ERROR*] : $Output"         
+        }
     }
     
     End
     {
-        If($JSONResponse)
+        If($JSONResponse -ne $Null -and $JSONResponse -ne '')
         {
             Return $JSONResponse
         }
 
         Else
         {
-            Return $False
+            Return "CW TICKET CLOSURE FAILED"
         }
     }
 }
@@ -530,20 +635,29 @@ Function Open-CWTicket
      }
     
     Process
-    {      
-        $JSONResponse = Invoke-RestMethod -URI $BaseURI -Headers $Headers -Body $Body -ContentType $ContentType -Method Patch
+    {   
+        Try
+        {   
+            $JSONResponse = Invoke-RestMethod -URI $BaseURI -Headers $Headers -Body $Body -ContentType $ContentType -Method Patch
+        }
+
+        Catch
+        {
+            $Output = $_.exception | Format-List -force | Out-String
+            Write-log "[*ERROR*] : $Output"                 
+        }
     }
     
     End
     {
-        If($JSONResponse)
+        If($JSONResponse -ne $Null -and $JSONResponse -ne '')
         {
             Return $JSONResponse
         }
 
         Else
         {
-            Return $False
+            Return "CW TICKET OPENING FAILED"
         }
     }
 }
@@ -599,21 +713,27 @@ function New-CWTimeEntry
 
         Try 
         {
-
             $JSONResponse = Invoke-RestMethod -URI $BaseURI -Headers $Headers -ContentType $ContentType -Method Post -Body $Body
-        
         }
     
         Catch [Exception]
         {
-            $ErrorMessage = $_.exception.message
-            Return 'Something went wrong.'
+            $Output = $_.exception | Format-List -force | Out-String
+            Write-log "[*ERROR*] : $Output"
         }
     }
 
     End
     {
-        Return $JSONResponse
+        If($JSONResponse -ne $Null -and $JSONResponse -ne "")
+        {
+            Return $JSONResponse
+        }
+
+        Else
+        {
+            Return "CW TIME ENTRY CREATION FAILED"
+        }
     }
 }
 
@@ -635,34 +755,84 @@ function Invoke-TicketProcess
 
     Process
     {
-        If ($Issue.customfield_10313 -eq $Null)
+        If ($($Issue.customfield_10313) -eq $Null -or $($Issue.customfield_10313) -eq "None")
         {
             Write-Log "No CW Ticket # found for this Jira issue."
             $Ticket = New-CWTicket -Ticket $Issue -BoardName "$BoardName" -Key $Key
 
-            If($Ticket -eq $False)
+            If($Ticket -eq "CW TICKET CREATION FAILED")
             {
                 Write-Log "Failed to Create CW Ticket for Jira Issue $($Issue.id)"
+                break;
             }
 
             Write-Log "CW Ticket #$($ticket.id) created."
-            Edit-JiraIssue -IssueID "$($Worklog.issue.id)" -CWTicketID "$($Ticket.id)"
-            $issue.customfield_10313 = $Ticket.id 
-            Write-Log "CW Ticket #$($ticket.id) mapped in JIRA."
+            $EditResults = Edit-JiraIssue -IssueID "$($Worklog.issue.id)" -CWTicketID "$($Ticket.id)"
+
+            If($EditResults -eq "Failed to Set CustomField_10313")
+            {
+                Write-Log "[*Error*]Failed to set customfield_10313 for Jira Issue $($Issue.id). Value should have been $($Ticket.id)."
+                Return "Process Failure"
+            }
+
+            Else
+            {
+                $issue.customfield_10313 = $Ticket.id 
+                Write-Log "CW Ticket #$($ticket.id) mapped in JIRA."
+                Return "Process Success"
+            }
+
+
         }
 
         Else
         {
-            $CurrentTicket = Get-CWticket -TicketID $Issue.customfield_10313
+            If($($Issue.customfield_10313) -notmatch "^[\d\.]+$")
+            {
+                Write-Log @"
+[*ERROR*] : CW Ticket Field contains a value that is not all numeric.
+Jira Issue: $($Issue.id)
+Customfield_10313 Value: $($Issue.customfield_10313)
+"@ 
+                Return "BAD CW TICKET VALUE"
+            }
 
-            If($CurrentTicket.id -ne $Issue.customfield_10313)
+            $CurrentTicket = Get-CWticket -TicketID $($Issue.customfield_10313)
+
+            If($CurrentTicket -eq "Bad-Request")
+            {
+                Write-log "[*Error*]Unable to retrieve information for CW Ticket $($Issue.customfield_10313)"
+                continue;
+            }
+
+            ElseIf($CurrentTicket.id -ne $Issue.customfield_10313)
             {
                 Write-Log "CW Ticket ID #$($Issue.customfield_10313) does not exist."
                 $Ticket = New-CWTicket -Ticket $Issue -BoardName "$BoardName" -Key $Key
+
+                If($Ticket -eq "CW TICKET CREATION FAILED")
+                {
+                    Write-Log "Failed to Create CW Ticket for Jira Issue $($Issue.id)"
+                    break;
+                }
+
                 Write-Log "CW Ticket #$($ticket.id) created."
-                Edit-JiraIssue -IssueID "$($Worklog.issue.id)" -CWTicketID "$($Ticket.id)"
-                $issue.customfield_10313 = $Ticket.id 
-                Write-Log "CW Ticket #$($ticket.id) mapped in JIRA." 
+
+                $EditResults = Edit-JiraIssue -IssueID "$($Worklog.issue.id)" -CWTicketID "$($Ticket.id)"
+
+                If($EditResults -eq "Failed to Set CustomField_10313")
+                {
+                    Write-Log "[*Error*]Failed to set customfield_10313 for Jira Issue $($Issue.id). Value should have been $($Ticket.id)."
+                    Return "Process Failure"
+                }
+
+                Else
+                {
+                    $issue.customfield_10313 = $Ticket.id 
+                    Write-Log "CW Ticket #$($ticket.id) mapped in JIRA."
+                    Return "Process Success"
+                }
+
             }
 
             Else
@@ -691,63 +861,92 @@ function Invoke-WorklogProcess
 
         $Ticket = Get-cwticket -TicketID $($Issue.customfield_10313)
 
+        If($Ticket -eq "Bad-Request")
+        {
+            Write-log "[*Error*]Unable to retrieve information for CW Ticket $($Issue.customfield_10313)"
+            continue;
+        }
+
+        #Check if the starting status of the CW Ticket is closed and set a flag for later so we set it back.
         If($Ticket.status.name -eq $ClosedStatus)
         {
             $Closed = $True
         }
 
-        [Array]$TimeEntryIDs = (Get-CWTimeEntries -TicketID "$($Issue.customfield_10313)").id
+        #Check the result of the Get-CWTimeEntries function.
+        $TimeEntryResponse = Get-CWTimeEntries -TicketID "$($Issue.customfield_10313)"
 
-        Foreach($TimeEntry in $TimeEntryIDs)
+        #If there are already time entries to check against....
+        If($TimeEntryResponse -ne "NO TIME ENTRIES")
         {
-            [Array]$TEDetails += Get-TimeEntryDetails -TimeEntryID $TimeEntry
-        }
-  
+            #Set an array of TimeEntryID's
+            [Array]$TimeEntryIDs = $($TimeEntryResponse.id)
 
-        Foreach($Detail in $TEDetails)
-        {
-                [INT]$Present = 0
+            #Get information on each of those time entries.
+            Foreach($TimeEntry in $TimeEntryIDs)
+            {
+                $TimeEntryResponse = Get-TimeEntryDetails -TimeEntryID $TimeEntry
+
+                If($TimeEntryResponse -ne "NO TIME ENTRY DETAILS")
+                {
+                    [Array]$TEDetails += $TimeEntryResponse
+                }
+    
+            }
+            
+            Foreach($Detail in $TEDetails)
+            {
+                [Bool]$Present = $False
                 $ErrorActionPreference = 'SilentlyContinue'
                 $RegCheck = ([regex]::matches($Detail.internalnotes, "(?:\[JiraID!!)(.*)(?:!!)")).groups[1].value   
                 $ErrorActionPreference = 'Continue'
 
                 If($($Worklog.id) -eq $RegCheck)
                 {
-                    [INT]$Present = 1
+                    [Bool]$Present = $True
                     break;
-                }  
+                }
+         
+            }
+            
+                          
         }
 
-        If($Present -ne 1)
+        Else
+        {
+            [Bool]$Present = $False
+        }
+            
+        If([Bool]$Present -eq $False)
         {
             If($Closed)
             {
                 $OpenIt = Open-CWTicket -TicketID $($Issue.customfield_10313)
-                    
+
                 If ($OpenIt.status.name -eq $Global:ReopenStatusName)
                 {
                     Write-Log "CW Ticket #$($Issue.customfield_10313) has been re-opened for posting time."
                 }
-
+                    
                 Else
                 {
                     Write-Log "Failed to re-open CW Ticket #$($Issue.customfield_10313)"
                     break;
                 }
             }
-            
+                                    
             $TimeEntry = New-CWTimeEntry -WorkLog $Worklog -CWTicketID "$($Issue.customfield_10313)"
 
-                If($TimeEntry -eq 'Something went wrong.')
-                {
-                    Write-Log "Jira Time Entry ID #$($Worklog.id) occurred in a previous time period."
-                }
+            If($TimeEntry -eq "CW TIME ENTRY CREATION FAILED")
+            {
+                Write-Log "Jira Time Entry ID #$($Worklog.id) occurred in a previous time period."
+            }
 
-                Else
-                {
-                    Write-Log "New Time Entry Created."
-                    Write-Log "Jira Time Entry ID #$($Worklog.id) | Time Logged = $($Worklog.timespentseconds/60/60) Hours"
-                }
+            Else
+            {
+                Write-Log "New Time Entry Created."
+                Write-Log "Jira Time Entry ID #$($Worklog.id) | Time Logged = $($Worklog.timespentseconds/60/60) Hours"
+            }
      
         }
 
@@ -755,8 +954,7 @@ function Invoke-WorklogProcess
         {
             Write-Log "Jira Time Entry ID #$($Worklog.id) is already logged." 
         }
-
-}
+    }
 }
 
 ####################################################################
@@ -797,7 +995,7 @@ Function Get-ProperUserInfo
     $JiraUser = ($JiraEmail.split('@'))[0]
     $JiraName = Get-JiraUserInfo -Name $JiraUser
 
-    If($JiraName -eq $False)
+    If($JiraName -eq "No User")
     {
         $ContactID = '255093'
         $Firstname = 'Phillip'
@@ -806,7 +1004,7 @@ Function Get-ProperUserInfo
 
     Else
     {
-       $SplitName = $JiraName.split(' ')
+       $SplitName = $JiraName.displayname.split(' ')
        $FirstName = $Splitname[0]
        $LastName  = $SplitName[1] 
     }
@@ -823,7 +1021,7 @@ Function Get-ProperUserInfo
 
     $ContactID = Get-CWContact -First $FirstName -Last $LastName -CompanyID $CompanyID
 
-    If($ContactID -eq $False)
+    If($ContactID -eq "NO CW CONTACT DATA")
     {
         Write-Log "Unable to retrieve a contact for Firstname: $Firstname Lastname: $Lastname CompanyID: $CompanyID"
         $Contactid = ''
@@ -832,11 +1030,15 @@ Function Get-ProperUserInfo
     If($MemberCheck)
     {
         $MemberInfo = Get-CWMember -EmailAddress $JiraEmail
-        $MemberID = $MemberInfo.id
 
-        If(!$MemberID)
+        If($MemberInfo -eq "NO CW MEMBER DATA")
         {
             $MemberID = ''
+        }
+
+        Else
+        {
+            $MemberID = $MemberInfo.id
         }
     }
 
@@ -941,6 +1143,7 @@ $VerbosePreference = 'SilentlyContinue'
 [String]$Global:ClosedStatusValue = '7315'
 [String]$Global:OpenStatusValue = '5800'
 [String]$Global:ReopenStatusName = 'New (Re-Open)'
+[String]$Global:NewTicketStatusName = "New"
 [Int]$MaxResults = '250'
 [String]$LogFilePath = "C:\Scheduled Tasks\Logs\Jira-CW-Platform-Team.txt"
 
@@ -975,9 +1178,16 @@ Foreach($User in $arrUsernames)
     Write-Log "Beginning Processing User: $User"
     $UserWorklogs = Get-Worklogs -username $User -dateFrom $WeekStart -dateTo $WeekEnd
 
-    If($UserWorklogs -eq $False)
+    If($UserWorklogs -eq "No Worklogs")
     {
-        Write-Log "No Time Entries for User: $User"
+        Write-Log "No Time Entries for User: $User";
+        continue;
+    }
+
+    ElseIf($UserWorklogs -eq "Exception Caught")
+    {
+        Write-Log "[*Error*]Exception caught and logged. This user will not be processed this run.";
+        continue;    
     }
 
     Else
@@ -1029,35 +1239,46 @@ Foreach($User in $arrUsernames)
 
             If($Break -eq 0)
             {
-                Invoke-TicketProcess -Issue $Issue -Boardname $Boardname -Key $($Worklog.issue.key) -Worklog $Worklog
-                Invoke-WorklogProcess -Issue $Issue -Worklog $Worklog -ClosedStatus $ClosedStatus
-            
-                #Close the ticket in CW if its closed in Jira
-                If($Issue.status.name -eq 'Closed')
+                $ITP_Result = Invoke-TicketProcess -Issue $Issue -Boardname $Boardname -Key $($Worklog.issue.key) -Worklog $Worklog
+
+                If($ITP_Result -eq 'Process Failure')
                 {
-                    Write-Log "Jira Issue is closed."
-                    $ISClosed = Get-cwticket -TicketID $($Issue.customfield_10313)
-            
-                    If($ISClosed.status.name -eq $ClosedStatus)
-                    {
-                        Write-Log "CW Ticket #$($Issue.customfield_10313) is closed."
-                    }
-            
-                    Else
-                    {
-                        $CloseIt = Close-CWTicket -TicketID $($IsClosed.id)
+                    Write-Log "[*Error*]Exception getting Worklog for User: $User | Issue : $($worklog.issue.id)"
+                    continue;                
+                }
 
-                        If ($CloseIt.status.name -eq $ClosedStatus)
+                Else
+                {
+                    Invoke-WorklogProcess -Issue $Issue -Worklog $Worklog -ClosedStatus $ClosedStatus
+            
+                    #Close the ticket in CW if its closed in Jira
+                    If($Issue.status.name -eq 'Closed')
+                    {
+                        Write-Log "Jira Issue is closed."
+                        $ISClosed = Get-cwticket -TicketID $($Issue.customfield_10313)
+            
+                        If($ISClosed.status.name -eq $ClosedStatus)
                         {
-                            Write-Log "CW Ticket #$($IsClosed.id) has been closed."
+                            Write-Log "CW Ticket #$($Issue.customfield_10313) is closed."
                         }
-
+            
                         Else
                         {
-                            Write-Log "Failed to close CW Ticket #$($IsClosed.id)"
+                            $CloseIt = Close-CWTicket -TicketID $($IsClosed.id)
+
+                            If ($CloseIt.status.name -eq $ClosedStatus)
+                            {
+                                Write-Log "CW Ticket #$($IsClosed.id) has been closed."
+                            }
+
+                            Else
+                            {
+                                Write-Log "Failed to close CW Ticket #$($IsClosed.id)"
+                            }
                         }
-                    }
+                    }                
                 }
+
             }
 
             $Counter++
