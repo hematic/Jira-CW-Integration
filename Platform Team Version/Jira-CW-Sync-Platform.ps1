@@ -18,8 +18,7 @@ Function Get-Issue
 
     Catch
     {
-        $Output = $_.exception | Format-List -force | Out-String
-        Write-log "[*ERROR*] : $Output"
+        Output-Exception  
         Return "TIMEOUT"
     }
 
@@ -63,8 +62,7 @@ Function Get-Worklogs
 
     Catch
     {
-        $Output = $_.exception | Format-List -force | Out-String
-        Write-log "[*ERROR*] : $Output"
+        Output-Exception
         Return "Exception Caught"       
     }
 
@@ -102,8 +100,7 @@ Function Get-JiraUserInfo
 
     Catch
     {
-        $Output = $_.exception | Format-List -force | Out-String
-        Write-log "[*ERROR*] : $Output"
+        Output-Exception
     }
 
     If($JSONResponse)
@@ -157,8 +154,7 @@ $Body= @"
 
     Catch
     {
-        $Output = $_.exception | Format-List -force | Out-String
-        Write-log "[*ERROR*] : $Output"    
+        Output-Exception
     }
 
     Write-Verbose "$($JsonResponse2.customfield_10313)"
@@ -209,8 +205,7 @@ Function Get-CWTicket
 
         Catch
         {
-            $Output = $_.exception | Format-List -force | Out-String
-            Write-log "[*ERROR*] : $Output"
+            Output-Exception 
         }
 
     }
@@ -260,8 +255,7 @@ Function Get-CWTimeEntries
 
         Catch
         {
-            $Output = $_.exception | Format-List -force | Out-String
-            Write-log "[*ERROR*] : $Output"            
+            Output-Exception            
         }
     }
 
@@ -310,8 +304,7 @@ Function Get-TimeEntryDetails
 
         Catch
         {
-            $Output = $_.exception | Format-List -force | Out-String
-            Write-log "[*ERROR*] : $Output"          
+            Output-Exception           
         }
     }
 
@@ -365,8 +358,7 @@ Function Get-CWMember
 
         Catch
         {
-            $Output = $_.exception | Format-List -force | Out-String
-            Write-log "[*ERROR*] : $Output"          
+            Output-Exception           
         }
     }
 
@@ -423,8 +415,7 @@ Function Get-CWContact
 
         Catch
         {
-            $Output = $_.exception | Format-List -force | Out-String
-            Write-log "[*ERROR*] : $Output"             
+            Output-Exception              
         }
     }
 
@@ -525,8 +516,7 @@ function New-CWTicket
 
         Catch
         {
-            $Output = $_.exception | Format-List -force | Out-String
-            Write-log "[*ERROR*] : $Output"         
+            Output-Exception          
         }
     }
 
@@ -584,8 +574,7 @@ Function Close-CWTicket
 
         Catch
         {
-            $Output = $_.exception | Format-List -force | Out-String
-            Write-log "[*ERROR*] : $Output"         
+            Output-Exception         
         }
     }
     
@@ -643,8 +632,7 @@ Function Open-CWTicket
 
         Catch
         {
-            $Output = $_.exception | Format-List -force | Out-String
-            Write-log "[*ERROR*] : $Output"                 
+            Output-Exception                
         }
     }
     
@@ -716,10 +704,9 @@ function New-CWTimeEntry
             $JSONResponse = Invoke-RestMethod -URI $BaseURI -Headers $Headers -ContentType $ContentType -Method Post -Body $Body
         }
     
-        Catch [Exception]
+        Catch
         {
-            $Output = $_.exception | Format-List -force | Out-String
-            Write-log "[*ERROR*] : $Output"
+            Output-Exception
         }
     }
 
@@ -1129,12 +1116,23 @@ Function Write-Log
     Write-Output $Message
 }
 
+Function Output-Exception
+{
+    $Output = $_.exception | Format-List -force | Out-String
+    $result = $_.Exception.Response.GetResponseStream()
+    $reader = New-Object System.IO.StreamReader($result)
+    $UsefulData = $reader.ReadToEnd();
+
+    Write-log "[*ERROR*] : `n$Output `n$Usefuldata "  
+}
+
 ####################################################################
 #Variable Declarations
 $ErrorActionPreference = 'Continue'
 $VerbosePreference = 'SilentlyContinue'
 [Array]$arrUsernames = @('pmarshall','mduren','mbastian','dmiller','cswain','aquenneville')
 [String]$CWServerRoot = "https://cw.connectwise.net/"
+#[String]$CWServerRoot = "https://api-na.myconnectwise.net/"  6AM -10AM stop these scheduled tasks
 [String]$JiraServerRoot = "https://jira.labtechsoftware.com/"
 [String]$ImpersonationMember = 'jira'
 [String]$DefaultContactEmail = 'pmarshall@labtechsoftware.com'
