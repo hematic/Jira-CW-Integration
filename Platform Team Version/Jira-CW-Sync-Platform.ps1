@@ -18,7 +18,7 @@ Function Get-Issue
 
     Catch
     {
-        Output-Exception  
+        Output-Exception
         Return "TIMEOUT"
     }
 
@@ -205,7 +205,7 @@ Function Get-CWTicket
 
         Catch
         {
-            Output-Exception 
+            Output-Exception
         }
 
     }
@@ -255,7 +255,7 @@ Function Get-CWTimeEntries
 
         Catch
         {
-            Output-Exception            
+            Output-Exception
         }
     }
 
@@ -304,7 +304,7 @@ Function Get-TimeEntryDetails
 
         Catch
         {
-            Output-Exception           
+            Output-Exception
         }
     }
 
@@ -358,7 +358,7 @@ Function Get-CWMember
 
         Catch
         {
-            Output-Exception           
+            Output-Exception
         }
     }
 
@@ -415,7 +415,7 @@ Function Get-CWContact
 
         Catch
         {
-            Output-Exception              
+            Output-Exception
         }
     }
 
@@ -516,7 +516,7 @@ function New-CWTicket
 
         Catch
         {
-            Output-Exception          
+            Output-Exception
         }
     }
 
@@ -1095,11 +1095,11 @@ Function Write-Log
 		This function is designed to send timestamped messages to a logfile of your choosing.
 		Use it to replace something like write-host for a more long term log.
 	
-	.PARAMETER StrMessage
+	.PARAMETER Message
 		The message being written to the log file.
 	
 	.EXAMPLE
-		PS C:\> Write-Log -StrMessage 'This is the message being written out to the log.' 
+		PS C:\> Write-Log -Message 'This is the message being written out to the log.' 
 	
 	.NOTES
 		N/A
