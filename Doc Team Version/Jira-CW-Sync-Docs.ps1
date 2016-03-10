@@ -459,12 +459,10 @@ function New-CWTicket
 
     Process
     {
-        Write-Log -Message "[DEBUG] Initial Summary = $($Ticket.summary)"
-
         If($($Ticket.summary) -eq $Null -or $($Ticket.summary) -eq "")
         {
-            Write-Log "$($Ticket | Format-Table | Out-String)"
-            Write-log "$($Error | Out-string)"
+            Write-Log "$($Ticket | Format-List | Out-String)"
+            Return "CW TICKET CREATION FAILED"
         }
 
         #Making sure the summary field is formatted properly
@@ -492,8 +490,6 @@ function New-CWTicket
         {
             $UserInfo = Get-ProperUserInfo -JiraEmail $($Ticket.assignee.emailaddress)
         }
-
-        Write-log "[DEBUG]Summary = [JIRA][$Key] - $Summary"
 
         $Body= @"
 {
@@ -750,7 +746,7 @@ function Invoke-TicketProcess
             If($Ticket -eq "CW TICKET CREATION FAILED")
             {
                 Write-Log "Failed to Create CW Ticket for Jira Issue $($Issue.id)"
-                break;
+                Return "Process Failure"
             }
 
             Write-Log "CW Ticket #$($ticket.id) created."
@@ -778,7 +774,7 @@ function Invoke-TicketProcess
             {
                 Write-Log @"
 [*ERROR*] : CW Ticket Field contains a value that is not all numeric.
-Jira Issue: $($Issue.id)
+Jira Issue: $($Worklog.issue.key)
 Customfield_10313 Value: $($Issue.customfield_10313)
 "@ 
                 Return "BAD CW TICKET VALUE"
@@ -789,7 +785,7 @@ Customfield_10313 Value: $($Issue.customfield_10313)
             If($CurrentTicket -eq "Bad-Request")
             {
                 Write-log "[*Error*]Unable to retrieve information for CW Ticket $($Issue.customfield_10313)"
-                continue;
+                Return "Process Failure"
             }
 
             ElseIf($CurrentTicket.id -ne $Issue.customfield_10313)
@@ -800,7 +796,7 @@ Customfield_10313 Value: $($Issue.customfield_10313)
                 If($Ticket -eq "CW TICKET CREATION FAILED")
                 {
                     Write-Log "Failed to Create CW Ticket for Jira Issue $($Issue.id)"
-                    break;
+                    Return "Process Failure"
                 }
 
                 Write-Log "CW Ticket #$($ticket.id) created."
@@ -825,6 +821,7 @@ Customfield_10313 Value: $($Issue.customfield_10313)
             Else
             {
                 Write-Log "CW Ticket #$($Issue.customfield_10313) is already correctly mapped."
+                Return "Process Success"
             }
         }
     }
@@ -1121,6 +1118,7 @@ Function Output-Exception
     $Output = $_.exception | Format-List -force | Out-String
     $result = $_.Exception.Response.GetResponseStream()
     $reader = New-Object System.IO.StreamReader($result)
+    $Reader.BaseStream.Position = 0
     $UsefulData = $reader.ReadToEnd();
 
     Write-log "[*ERROR*] : `n$Output `n$Usefuldata "  
@@ -1128,12 +1126,11 @@ Function Output-Exception
 
 ####################################################################
 #Variable Declarations
-$ErrorActionPreference = 'Continue'
+$ErrorActionPreference = 'SilentlyContinue'
 $VerbosePreference = 'SilentlyContinue'
 [Array]$arrUsernames = @('cvalentine','sbakan','bwhitmire')
 [String]$CWServerRoot = "https://cw.connectwise.net/"
 [String]$JiraServerRoot = "https://jira-dev.labtechsoftware.com/"
-[String]$ImpersonationMember = 'jira'
 [String]$DefaultContactEmail = 'bwhitmire@labtechsoftware.com'
 [String]$Boardname = 'LT-Documentation'
 [String]$ClosedStatus = '>Complete'
@@ -1222,7 +1219,7 @@ Foreach($User in $arrUsernames)
             {
                 Write-Log "Encountered Error Retrieving Issue information"
                 Write-Log "This worklog will not be processed this run."
-                Write-Log "Worklog: $($Worklog | Format-List -Force)"
+                Write-Log "Worklog: $($Worklog | Format-List -force | Out-String)"
                 [Int]$Break++
             }
 
@@ -1238,9 +1235,9 @@ Foreach($User in $arrUsernames)
             {
                 $ITP_Result = Invoke-TicketProcess -Issue $Issue -Boardname $Boardname -Key $($Worklog.issue.key) -Worklog $Worklog
 
-                If($ITP_Result -eq 'Process Failure')
+                If($ITP_Result -eq 'Process Failure' -or $ITP_Result -eq "BAD CW TICKET VALUE")
                 {
-                    Write-Log "[*Error*]Exception getting Worklog for User: $User | Issue : $($worklog.issue.id)"
+                    Write-Log "[*Error*]Failure processing Worklog for User: $User | Issue : $($worklog.issue.id)"
                     continue;                
                 }
 
