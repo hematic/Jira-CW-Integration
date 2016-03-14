@@ -1129,7 +1129,7 @@ Function Output-Exception
 $ErrorActionPreference = 'SilentlyContinue'
 $VerbosePreference = 'SilentlyContinue'
 [Array]$arrUsernames = @('cvalentine','sbakan','bwhitmire')
-[String]$CWServerRoot = "https://cw.connectwise.net/"
+[String]$CWServerRoot = "https://api-na.myconnectwise.net/"
 [String]$JiraServerRoot = "https://jira-dev.labtechsoftware.com/"
 [String]$DefaultContactEmail = 'bwhitmire@labtechsoftware.com'
 [String]$Boardname = 'LT-Documentation'

@@ -3,8 +3,8 @@
 
 Function Get-FilterResults
 {
-    #$RestApiURI = $JiraServerRoot + "rest/api/2/search?jql=project%20in%20(SDT%2C%20PTC%2C%20LTC)%20AND%20status%20in%20(Closed%2C%20`"Dev%20Queue`"%2C%20`"QA%20Queue`"%2C%20Passed)%20AND%20updated%20>%20-1d%20ORDER%20BY%20updated%20ASC&maxResults=$Global:MaxResults"
-    $RestApiURI = $JiraServerRoot + "rest/api/2/search?jql=project%20in%20(SDT%2C%20PTC%2C%20LTC)%20AND%20status%20in%20(Closed%2C%20`"Dev%20Queue`"%2C%20`"QA%20Queue`"%2C%20Passed)&maxResults=$Global:MaxResults"
+    $RestApiURI = $JiraServerRoot + "rest/api/2/search?jql=project%20in%20(SDT%2C%20PTC%2C%20LTC)%20AND%20status%20in%20(Closed%2C%20`"Dev%20Queue`"%2C%20`"QA%20Queue`"%2C%20Passed)%20AND%20updated%20>%20-1d%20ORDER%20BY%20updated%20ASC&maxResults=$Global:MaxResults"
+    #$RestApiURI = $JiraServerRoot + "rest/api/2/search?jql=project%20in%20(SDT%2C%20PTC%2C%20LTC)%20AND%20status%20in%20(Closed%2C%20`"Dev%20Queue`"%2C%20`"QA%20Queue`"%2C%20Passed)&maxResults=$Global:MaxResults"
     $JSONResponse = Invoke-RestMethod -Uri $restapiuri -Headers @{ "Authorization" = "Basic $JiraCredentials" } -ContentType application/json -Method Get
 
     If($JSONResponse)
@@ -58,8 +58,7 @@ $Body= @"
 
     Catch
     {
-        $Output = $_.exception | Format-List -force | Out-String
-        Write-log "[*ERROR*] : $Output"    
+        Output-Exception
     }
 
     Write-Verbose "$($JsonResponse2.customfield_10313)"
@@ -110,8 +109,7 @@ Function Get-CWTicket
 
         Catch
         {
-            $Output = $_.exception | Format-List -force | Out-String
-            Write-log "[*ERROR*] : $Output"
+            Output-Exception
         }
 
     }
@@ -135,54 +133,46 @@ Function Get-CWTicket
 
 Function Update-CWTicketStatus
 {
-    [cmdletbinding()]
-    
-    param
-    (
-    	[Parameter(Mandatory = $true,Position = 0,ValueFromPipeline,ValueFromPipelineByPropertyName)]
-        [ValidateNotNullorEmpty()]
-		[INT]$TicketID,
-    	[Parameter(Mandatory = $true,Position = 1,ValueFromPipeline,ValueFromPipelineByPropertyName)]
-        [ValidateNotNullorEmpty()]
-		[INT]$StatusID
-    )
+	param
+	(
+		[Parameter(Mandatory = $True,Position = 0)]
+		[String]$IssueID,
+		[Parameter(Mandatory = $True,Position = 1)]
+		[String]$CWTicketID
+	)
 
-    Begin
-    {
-        [string]$BaseUri     = "$CWServerRoot" + "v4_6_Release/apis/3.0/service/tickets/$ticketID"
-        [string]$Accept      = "application/vnd.connectwise.com+json; version=v2015_3"
-        [string]$ContentType = "application/json"
-
-        $Headers=@{
-            'X-cw-overridessl' = "True"
-            "Authorization"="Basic $encodedAuth"
-            }
-
-        $Body= @"
-        [
-        {
-            "op" : "replace", "path": "/status/id", "value": "$StatusID"
-        }
-        ]
+$Body= @"
+{
+"fields":
+	{
+	"customfield_10313" : "$CWTicketID"
+	}
+}
 "@
-     }
-    
-    Process
-    {      
-        $JSONResponse = Invoke-RestMethod -URI $BaseURI -Headers $Headers -Body $Body -ContentType $ContentType -Method Patch
-    }
-    
-    End
-    {
-        If($JSONResponse)
-        {
-            Return $JSONResponse
-        }
 
-        Else
-        {
-            Return $False
-        }
+    $RestApiURI = $JiraServerRoot + "rest/api/latest/issue/$IssueID"
+    
+    Try
+    {    
+        $JSONResponse = Invoke-RestMethod -Uri $restapiuri -Headers @{ "Authorization" = "Basic $JiraCredentials" } -ContentType application/json -Body $Body -method Put
+        $JsonResponse2 = Get-Issue -IssueID $IssueID
+    }
+
+    Catch
+    {
+        Output-Exception
+    }
+
+    Write-Verbose "$($JsonResponse2.customfield_10313)"
+
+    If($($JsonResponse2.customfield_10313) -eq $CWTicketID)
+    {
+        Return "Success"    
+    }
+
+    Else
+    {
+        Return "Failed to Set CustomField_10313"
     }
 }
 
@@ -200,6 +190,13 @@ Function Process-IssuesObj
         Write-Log "-----------------------------------------------"
         Write-Log "Issue: $($Issue.key)"
         Write-log "CW Ticket ID: $($Issue.fields.customfield_10313)"
+
+        If($($Issue.fields.customfield_10313) -eq $Null -or $($Issue.fields.customfield_10313) -eq '')
+        {
+            Write-log "[*ERROR*]No CW Ticket is populated in the Customfield!"
+            Return "Empty CustomField"
+        }
+
         $CWStatus = (get-cwticket -TicketID $($Issue.fields.customfield_10313)).status.name
 
         If($CWStatus -eq "Bad Request")
@@ -212,21 +209,24 @@ Function Process-IssuesObj
         {
             write-log "Status: $($Issue.fields.status.name)"
             Write-log "CW Ticket Status: $CWStatus"
-            Update-CWTicketStatus -TicketID $($Issue.fields.customfield_10313) -StatusID $Dev_Pending_Fix_Core
+            Write-log "[*Success*] Would have updated this CW Ticket status to `"DEV-Pending fix (Core)`""
+            #Update-CWTicketStatus -TicketID $($Issue.fields.customfield_10313) -StatusID $Dev_Pending_Fix_Core
         }
 
         ElseIf($($Issue.fields.status.name) -eq "QA Queue" -and $CWStatus -ne "QA-Pending Fix Validation")
         {
             write-log "Status: $($Issue.fields.status.name)"
             Write-log "CW Ticket Status: $CWStatus"
-            Update-CWTicketStatus -TicketID $($Issue.fields.customfield_10313) -StatusID $QA_Pending_Fix_Validation
+            Write-log "[*Success*] Would have updated this CW Ticket status to `"QA-Pending Fix Validation`""
+            #Update-CWTicketStatus -TicketID $($Issue.fields.customfield_10313) -StatusID $QA_Pending_Fix_Validation
         }
 
         ElseIf($($Issue.fields.status.name) -eq "Passed" -and $CWStatus -ne "QA-Fix Passed")
         {
             write-log "Status: $($Issue.fields.status.name)"
             Write-log "CW Ticket Status: $CWStatus"
-            Update-CWTicketStatus -TicketID $($Issue.fields.customfield_10313) -StatusID $QA_Fix_Passed
+            Write-log "[*Success*] Would have updated this CW Ticket status to `"QA-Fix Passed`""
+            #Update-CWTicketStatus -TicketID $($Issue.fields.customfield_10313) -StatusID $QA_Fix_Passed
         }
 
         ElseIf($($Issue.fields.status.name) -eq "Closed" -and $($Issue.fields.resolution.name) -eq "Done" -and $CWStatus -ne "Released")
@@ -234,7 +234,8 @@ Function Process-IssuesObj
             write-log "Status: $($Issue.fields.status.name)"
             write-log "Resolution: $($Issue.fields.resolution.name)"
             Write-log "CW Ticket Status: $CWStatus"
-            Update-CWTicketStatus -TicketID $($Issue.fields.customfield_10313) -StatusID $Released
+            Write-log "[*Success*] Would have updated this CW Ticket status to `"Released`""
+            #Update-CWTicketStatus -TicketID $($Issue.fields.customfield_10313) -StatusID $Released
         }
 
         ElseIf($($Issue.fields.status.name) -eq "Closed" -and $($Issue.fields.resolution.name) -ne "Done" -and $CWStatus -ne "SDT-Closed Unapproved")
@@ -242,7 +243,8 @@ Function Process-IssuesObj
             write-log "Status: $($Issue.fields.status.name)"
             write-log "Resolution: $($Issue.fields.resolution.name)"
             Write-log "CW Ticket Status: $CWStatus"
-            Update-CWTicketStatus -TicketID $($Issue.fields.customfield_10313) -StatusID $SDT_Closed_Unapproved
+            Write-log "[*Success*] Would have updated this CW Ticket status to `"SDT-Closed Unapproved`""
+            #Update-CWTicketStatus -TicketID $($Issue.fields.customfield_10313) -StatusID $SDT_Closed_Unapproved
         }
 }
 
@@ -263,21 +265,24 @@ Function Process-IssuesParsed
         {
             write-log "Status: $($Issue.fields.Item("status").name)"
             Write-log "CW Ticket Status: $CWStatus"
-            Update-CWTicketStatus -TicketID $($Issue.fields.Item("customfield_10313")) -StatusID $Dev_Pending_Fix_Core
+            Write-log "[*Success*] Would have updated this CW Ticket status to `"DEV-Pending fix (Core)`""
+            #Update-CWTicketStatus -TicketID $($Issue.fields.Item("customfield_10313")) -StatusID $Dev_Pending_Fix_Core
         }
 
         ElseIf($($Issue.fields.Item("status").name) -eq "QA Queue" -and $CWStatus -ne "QA-Pending Fix Validation")
         {
             write-log "Status: $($Issue.fields.Item("status").name)"
             Write-log "CW Ticket Status: $CWStatus"
-            Update-CWTicketStatus -TicketID $($Issue.fields.Item("customfield_10313")) -StatusID $QA_Pending_Fix_Validation
+            Write-log "[*Success*] Would have updated this CW Ticket status to `"QA-Pending Fix Validation`""
+            #Update-CWTicketStatus -TicketID $($Issue.fields.Item("customfield_10313")) -StatusID $QA_Pending_Fix_Validation
         }
 
         ElseIf($($Issue.fields.Item("status").name) -eq "Passed" -and $CWStatus -ne "QA-Fix Passed")
         {
             write-log "Status: $($Issue.fields.Item("status").name)"
             Write-log "CW Ticket Status: $CWStatus"
-            Update-CWTicketStatus -TicketID $($Issue.fields.Item("customfield_10313")) -StatusID $QA_Fix_Passed
+            Write-log "[*Success*] Would have updated this CW Ticket status to `"QA-Fix Passed`""
+            #Update-CWTicketStatus -TicketID $($Issue.fields.Item("customfield_10313")) -StatusID $QA_Fix_Passed
         }
 
         ElseIf($($Issue.fields.Item("status").name) -eq "Closed" -and $($Issue.fields.Item("resolution").name) -eq "Done" -and $CWStatus -ne "Released")
@@ -285,7 +290,8 @@ Function Process-IssuesParsed
             write-log "Status: $($Issue.fields.Item("status").name)"
             write-log "Resolution: $($Issue.fields.Item("resolution").name)"
             Write-log "CW Ticket Status: $CWStatus"
-            Update-CWTicketStatus -TicketID $($Issue.fields.Item("customfield_10313")) -StatusID $Released
+            Write-log "[*Success*] Would have updated this CW Ticket status to `"Released`""
+            #Update-CWTicketStatus -TicketID $($Issue.fields.Item("customfield_10313")) -StatusID $Released
         }
 
         ElseIf($($Issue.fields.Item("status").name) -eq "Closed" -and $($Issue.fields.Item("resolution").name) -ne "Done" -and $CWStatus -ne "SDT-Closed Unapproved")
@@ -293,7 +299,8 @@ Function Process-IssuesParsed
             write-log "Status: $($Issue.fields.Item("status").name)"
             write-log "Resolution: $($Issue.fields.Item("resolution").name)"
             Write-log "CW Ticket Status: $CWStatus"
-            Update-CWTicketStatus -TicketID $($Issue.fields.Item("customfield_10313")) -StatusID $SDT_Closed_Unapproved
+            Write-log "[*Success*] Would have updated this CW Ticket status to `"SDT-Closed Unapproved`""
+            #Update-CWTicketStatus -TicketID $($Issue.fields.Item("customfield_10313")) -StatusID $SDT_Closed_Unapproved
         }
 }
 
@@ -320,24 +327,6 @@ Function Format-SanitizedString
 
 Function Write-Log
 {
-	<#
-	.SYNOPSIS
-		A function to write ouput messages to a logfile.
-	
-	.DESCRIPTION
-		This function is designed to send timestamped messages to a logfile of your choosing.
-		Use it to replace something like write-host for a more long term log.
-	
-	.PARAMETER StrMessage
-		The message being written to the log file.
-	
-	.EXAMPLE
-		PS C:\> Write-Log -StrMessage 'This is the message being written out to the log.' 
-	
-	.NOTES
-		N/A
-#>
-	
 	Param
 	(
 		[Parameter(Mandatory = $True, Position = 0)]
@@ -347,6 +336,17 @@ Function Write-Log
     
 	add-content -path $LogFilePath -value ($Message)
     Write-Output $Message
+}
+
+Function Output-Exception
+{
+    $Output = $_.exception | Format-List -force | Out-String
+    $result = $_.Exception.Response.GetResponseStream()
+    $reader = New-Object System.IO.StreamReader($result)
+    $Reader.BaseStream.Position = 0
+    $UsefulData = $reader.ReadToEnd();
+
+    Write-log "[*ERROR*] : `n$Output `n$Usefuldata "  
 }
 
 function ConvertFrom-Json2{
@@ -485,7 +485,7 @@ END
 #Variable Declarations
 $ErrorActionPreference = 'Continue'
 $VerbosePreference = 'SilentlyContinue'
-[String]$CWServerRoot = "https://cw.connectwise.net/"
+[String]$CWServerRoot = "https://api-na.myconnectwise.net/"
 [String]$JiraServerRoot = "https://jira-dev.labtechsoftware.com/"
 [Int]$Dev_Pending_Fix_Core = '6012'
 [Int]$QA_Pending_Fix_Validation = '5387'
@@ -493,7 +493,7 @@ $VerbosePreference = 'SilentlyContinue'
 [Int]$Released = '6912'
 [Int]$SDT_Closed_Unapproved = '5434'
 [Int]$Global:MaxResults = '750'
-[String]$LogFilePath = "C:\Scheduled Tasks\Logs\Jira-CW-Doc-Team.txt"
+[String]$LogFilePath = "C:\Scheduled Tasks\Logs\Jira-CW-Dev-Team.txt"
 
 Remove-Item $LogFilePath -Force -ErrorAction 'SilentlyContinue'
 
@@ -523,9 +523,14 @@ If($($RawData.GetType().fullname -eq 'System.Management.Automation.PSCustomObjec
     {
         $ProcessResult = Process-IssuesObj -Issue $Issue
 
-        If($ProcessResult -eq "Failed to Retrieve CW Ticket Data")
+        If($ProcessResult -eq "Empty CustomField" -or $ProcessResult -eq "Failed to Retrieve CW Ticket Data")
         {
-            Write-Log "Processing Issue"
+            Write-Log "Processing Issue $($Issue.key) : Failed."
+        }
+
+        Else
+        {
+            Write-Log "Processing Issue $($Issue.key) : Completed."
         }
     }
 }
@@ -542,4 +547,3 @@ Else
         Process-IssuesParsed -Issue $Issue
     }
 }
-

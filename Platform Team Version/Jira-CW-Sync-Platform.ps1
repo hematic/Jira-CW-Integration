@@ -1129,8 +1129,8 @@ Function Output-Exception
 $ErrorActionPreference = 'Continue'
 $VerbosePreference = 'SilentlyContinue'
 [Array]$arrUsernames = @('pmarshall','mduren','mbastian','dmiller','cswain','aquenneville')
-[String]$CWServerRoot = "https://cw.connectwise.net/"
-#[String]$CWServerRoot = "https://api-na.myconnectwise.net/"  6AM -10AM stop these scheduled tasks
+#[String]$CWServerRoot = "https://cw.connectwise.net/"
+[String]$CWServerRoot = "https://api-na.myconnectwise.net/"
 [String]$JiraServerRoot = "https://jira.labtechsoftware.com/"
 [String]$DefaultContactEmail = 'pmarshall@labtechsoftware.com'
 [String]$Boardname = 'LT-Infrastructure'
