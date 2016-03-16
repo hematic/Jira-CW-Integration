@@ -530,7 +530,7 @@ function New-CWTicket
     }
 }
 
-Function Close-CWTicket
+Function Change-CWTicketStatus
 {
     [cmdletbinding()]
     
@@ -538,7 +538,13 @@ Function Close-CWTicket
     (
     	[Parameter(Mandatory = $true,Position = 0,ValueFromPipeline,ValueFromPipelineByPropertyName)]
         [ValidateNotNullorEmpty()]
-		[INT]$TicketID
+		[INT]$TicketID,
+    	[Parameter(Mandatory = $false,Position = 1,ValueFromPipeline,ValueFromPipelineByPropertyName)]
+        [ValidateNotNullorEmpty()]
+		[Bool]$Open,
+    	[Parameter(Mandatory = $false,Position = 2,ValueFromPipeline,ValueFromPipelineByPropertyName)]
+        [ValidateNotNullorEmpty()]
+		[Bool]$Close
     )
 
     Begin
@@ -552,13 +558,35 @@ Function Close-CWTicket
             "Authorization"="Basic $encodedAuth"
             }
 
-        $Body= @"
-        [
+        If($Open -eq $True)
         {
-            "op" : "replace", "path": "/status/id", "value": "$Global:ClosedStatusValue"
-        }
-        ]
+            $Body= @"
+            [
+            {
+                "op" : "replace", "path": "/status/id", "value": "$Global:OpenStatusValue"
+            }
+            ]
 "@
+        }
+        
+        ElseIf($Close -eq $True)
+        {
+            $Body= @"
+            [
+            {
+                "op" : "replace", "path": "/status/id", "value": "$Global:ClosedStatusValue"
+            }
+            ]
+"@
+        }
+
+        Else
+        {
+            Write-Log "Ambiguous parameters passed to function. Please specify Open or Close"
+            Return "Ambiguous Parameters"
+        }
+
+
      }
     
     Process
@@ -583,65 +611,7 @@ Function Close-CWTicket
 
         Else
         {
-            Return "CW TICKET CLOSURE FAILED"
-        }
-    }
-}
-
-Function Open-CWTicket
-{
-    [cmdletbinding()]
-    
-    param
-    (
-    	[Parameter(Mandatory = $true,Position = 0,ValueFromPipeline,ValueFromPipelineByPropertyName)]
-        [ValidateNotNullorEmpty()]
-		[INT]$TicketID
-    )
-
-    Begin
-    {
-        [string]$BaseUri     = "$CWServerRoot" + "v4_6_Release/apis/3.0/service/tickets/$ticketID"
-        [string]$Accept      = "application/vnd.connectwise.com+json; version=v2015_3"
-        [string]$ContentType = "application/json"
-
-        $Headers=@{
-            'X-cw-overridessl' = "True"
-            "Authorization"="Basic $encodedAuth"
-            }
-
-        $Body= @"
-        [
-        {
-            "op" : "replace", "path": "/status/id", "value": "$Global:OpenStatusValue"
-        }
-        ]
-"@
-     }
-    
-    Process
-    {   
-        Try
-        {   
-            $JSONResponse = Invoke-RestMethod -URI $BaseURI -Headers $Headers -Body $Body -ContentType $ContentType -Method Patch
-        }
-
-        Catch
-        {
-            Output-Exception                
-        }
-    }
-    
-    End
-    {
-        If($JSONResponse -ne $Null -and $JSONResponse -ne '')
-        {
-            Return $JSONResponse
-        }
-
-        Else
-        {
-            Return "CW TICKET OPENING FAILED"
+            Return "Status Change Failed"
         }
     }
 }
@@ -905,7 +875,7 @@ function Invoke-WorklogProcess
         {
             If($Closed)
             {
-                $OpenIt = Open-CWTicket -TicketID $($Issue.customfield_10313)
+                $OpenIt = Change-CWTicketStatus -TicketID $($Issue.customfield_10313) -Open $True
 
                 If ($OpenIt.status.name -eq $Global:ReopenStatusName)
                 {
@@ -1129,7 +1099,6 @@ Function Output-Exception
 $ErrorActionPreference = 'Continue'
 $VerbosePreference = 'SilentlyContinue'
 [Array]$arrUsernames = @('pmarshall','mduren','mbastian','dmiller','cswain','aquenneville')
-#[String]$CWServerRoot = "https://cw.connectwise.net/"
 [String]$CWServerRoot = "https://api-na.myconnectwise.net/"
 [String]$JiraServerRoot = "https://jira.labtechsoftware.com/"
 [String]$DefaultContactEmail = 'pmarshall@labtechsoftware.com'
@@ -1259,7 +1228,7 @@ Foreach($User in $arrUsernames)
             
                         Else
                         {
-                            $CloseIt = Close-CWTicket -TicketID $($IsClosed.id)
+                            $CloseIt = Change-CWTicketStatus -TicketID $($IsClosed.id) -Close $True
 
                             If ($CloseIt.status.name -eq $ClosedStatus)
                             {
