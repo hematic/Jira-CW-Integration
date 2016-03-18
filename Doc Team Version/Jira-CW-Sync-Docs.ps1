@@ -186,7 +186,7 @@ Function Get-CWTicket
 
     Begin
     {
-    [string]$BaseUri     = "$CWServerRoot" + "v4_6_Release/apis/3.0/service/tickets/$ticketID"
+    [string]$BaseUri     = "$CWServerRoot" + "$Codebase" + "apis/3.0/service/tickets/$ticketID"
     [string]$Accept      = "application/vnd.connectwise.com+json; version=v2015_3"
     [string]$ContentType = "application/json"
 
@@ -236,7 +236,7 @@ Function Get-CWTimeEntries
 
     Begin
     {
-    [string]$BaseUri     = "$CWServerRoot" + "v4_6_Release/apis/3.0/service/tickets/$ticketID/timeentries"
+    [string]$BaseUri     = "$CWServerRoot" + "$Codebase" + "apis/3.0/service/tickets/$ticketID/timeentries"
     [string]$Accept      = "application/vnd.connectwise.com+json; version=v2015_3"
     [string]$ContentType = "application/json"
 
@@ -285,7 +285,7 @@ Function Get-TimeEntryDetails
 
     Begin
     {
-    [string]$BaseUri     = "$CWServerRoot" + "v4_6_Release/apis/3.0/Time/Entries/$TimeEntryID"
+    [string]$BaseUri     = "$CWServerRoot" + "$Codebase" + "apis/3.0/Time/Entries/$TimeEntryID"
     [string]$Accept      = "application/vnd.connectwise.com+json; version=v2015_3"
     [string]$ContentType = "application/json"
 
@@ -334,7 +334,7 @@ Function Get-CWMember
 
     Begin
     {
-        [string]$BaseUri     = "$CWServerRoot" + "v4_6_Release/apis/3.0/system/members"
+        [string]$BaseUri     = "$CWServerRoot" + "$Codebase" + "apis/3.0/system/members"
         [string]$Accept      = "application/vnd.connectwise.com+json; version=v2015_3"
         [string]$ContentType = "application/json"
 
@@ -392,7 +392,7 @@ Function Get-CWContact
 
     Begin
     {
-        [string]$BaseUri     = "$CWServerRoot" + "v4_6_Release/apis/3.0/company/contacts"
+        [string]$BaseUri     = "$CWServerRoot" + "$Codebase" + "apis/3.0/company/contacts"
         [string]$Accept      = "application/vnd.connectwise.com+json; version=v2015_3"
         [string]$ContentType = "application/json"
 
@@ -452,7 +452,7 @@ function New-CWTicket
 
     Begin
     {
-        [string]$BaseUri     = "$CWServerRoot" + "v4_6_Release/apis/3.0/service/tickets"
+        [string]$BaseUri     = "$CWServerRoot" + "$Codebase" + "apis/3.0/service/tickets"
         [string]$Accept      = "application/vnd.connectwise.com+json; version=v2015_3"
         [string]$ContentType = "application/json"
     }
@@ -549,7 +549,7 @@ Function Change-CWTicketStatus
 
     Begin
     {
-        [string]$BaseUri     = "$CWServerRoot" + "v4_6_Release/apis/3.0/service/tickets/$ticketID"
+        [string]$BaseUri     = "$CWServerRoot" + "$Codebase" + "apis/3.0/service/tickets/$ticketID"
         [string]$Accept      = "application/vnd.connectwise.com+json; version=v2015_3"
         [string]$ContentType = "application/json"
 
@@ -631,7 +631,7 @@ function New-CWTimeEntry
 
     Begin
     {
-        [string]$BaseUri     = "$CWServerRoot" + "v4_6_Release/apis/3.0/time/entries"
+        [string]$BaseUri     = "$CWServerRoot" + "$Codebase" + "apis/3.0/time/entries"
         [string]$Accept      = "application/vnd.connectwise.com+json; version=v2015_3"
         [string]$ContentType = "application/json"
     }
@@ -1100,6 +1100,7 @@ $ErrorActionPreference = 'SilentlyContinue'
 $VerbosePreference = 'SilentlyContinue'
 [Array]$arrUsernames = @('cvalentine','sbakan','bwhitmire')
 [String]$CWServerRoot = "https://api-na.myconnectwise.net/"
+[String]$CodeBase = (Invoke-RestMethod -uri 'http://api-na.myconnectwise.net/login/companyinfo/connectwise').codebase
 [String]$JiraServerRoot = "https://jira-dev.labtechsoftware.com/"
 [String]$DefaultContactEmail = 'bwhitmire@labtechsoftware.com'
 [String]$Boardname = 'LT-Documentation'
