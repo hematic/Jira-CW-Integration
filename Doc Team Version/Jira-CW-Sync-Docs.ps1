@@ -653,11 +653,10 @@ function New-CWTimeEntry
     "chargeToId"     : "$CWTicketID",
     "timeStart"      : "$Created",
     "timeend"        : "$Ended",
-    "internalnotes"  : "[JiraID!!$($Worklog.id)!!] $($SanitizedComment)",
+    "internalnotes"  : "[JiraID!!$($Worklog.id)!!TotalSeconds!!$($worklog.timeSpentSeconds)!!] $($SanitizedComment)",
     "company"        : {"id": "$($Memberinfo.CompanyID)"},
     "member"         : {"id": "$($Memberinfo.MemberID)"},
     "billableOption" : "DoNotBill"
-    
 }
 "@
         $Headers=@{
@@ -690,6 +689,88 @@ function New-CWTimeEntry
     }
 }
 
+function Edit-CWTimeEntry
+{
+
+    [cmdletbinding()]
+
+    param
+    (
+        [Parameter(Mandatory = $true,Position = 0,ValueFromPipeline,ValueFromPipelineByPropertyName)]
+        [PSCustomObject]$WorkLog,
+        [Parameter(Mandatory = $true,Position = 1,ValueFromPipeline,ValueFromPipelineByPropertyName)]
+        [Int]$TimeEntryID
+    )
+
+    Begin
+    {
+        [string]$BaseUri     = "$CWServerRoot" + "$Codebase" + "apis/3.0/time/entries/$TimeEntryID"
+        [string]$Accept      = "application/vnd.connectwise.com+json; version=v2015_3"
+        [string]$ContentType = "application/json"
+    }
+
+    Process
+    {
+        #Date Magic
+        $StartedUniversal = (get-date ($WorkLog.datestarted)).ToUniversalTime()
+        [string]$Ended = ($StartedUniversal).AddSeconds($Worklog.timeSpentSeconds)
+        [String]$Created = Get-Date ($StartedUniversal) -format "yyyy-MM-ddTHH:mm:ssZ"
+        [String]$Ended = Get-Date ($Ended) -format "yyyy-MM-ddTHH:mm:ssZ"
+        $ActualHours = (New-TimeSpan -Start $Created -End $Ended).TotalHours
+
+        $MemberInfo = Get-ProperUserInfo -JiraEmail "$($Worklog.author.name)@labtechsoftware.com" -MemberCheck '1'
+        $SanitizedComment = Format-sanitizedstring -InputString $($WorkLog.comment)
+        $InternalNotes = (Get-TimeEntryDetails -TimeEntryID $TimeEntryID).internalnotes
+
+        $InternalNotes = $InternalNotes -replace "(?:TotalSeconds!!)(\d+)(?:!!)","TotalSeconds!!$($WorkLog.timespentseconds)!!"
+
+        $Body= @"
+        [
+        {
+            "op" : "replace", "path": "timeStart", "value": "$Created"
+        },
+        {
+            "op" : "replace", "path": "timeEnd", "value": "$Ended"
+        },
+        {
+            "op" : "replace", "path": "internalNotes", "value": "$InternalNotes"
+        },
+        {
+            "op" : "replace", "path": "actualHours", "value": "$ActualHours"
+        }
+        ]
+"@
+
+        $Headers=@{
+'X-cw-overridessl' = "True"
+"Authorization"="Basic $encodedAuth"
+}
+
+        Try 
+        {
+            $JSONResponse = Invoke-RestMethod -URI $BaseURI -Headers $Headers -ContentType $ContentType -Method Patch -Body $Body
+        }
+    
+        Catch
+        {
+            Output-Exception
+        }
+    }
+
+    End
+    {
+        If($JSONResponse -ne $Null -and $JSONResponse -ne "")
+        {
+            Return $JSONResponse
+        }
+
+        Else
+        {
+            Return "CW TIME EDIT FAILED"
+        }
+    }
+}
+
 function Invoke-TicketProcess
 {
     [cmdletbinding()]
@@ -716,7 +797,12 @@ function Invoke-TicketProcess
             If($Ticket -eq "CW TICKET CREATION FAILED")
             {
                 Write-Log "Failed to Create CW Ticket for Jira Issue $($Issue.id)"
-                Return "Process Failure"
+
+                $Result += New-Object PSObject -Property @{
+                Result     = "Process Failure";
+                TicketInfo = $False;
+                }
+                Return $Result
             }
 
             Write-Log "CW Ticket #$($ticket.id) created."
@@ -725,14 +811,24 @@ function Invoke-TicketProcess
             If($EditResults -eq "Failed to Set CustomField_10313")
             {
                 Write-Log "[*Error*]Failed to set customfield_10313 for Jira Issue $($Issue.id). Value should have been $($Ticket.id)."
-                Return "Process Failure"
+                
+                $Result += New-Object PSObject -Property @{
+                Result     = "Process Failure";
+                TicketInfo = $False;
+                }
+                Return $Result
             }
 
             Else
             {
                 $issue.customfield_10313 = $Ticket.id 
                 Write-Log "CW Ticket #$($ticket.id) mapped in JIRA."
-                Return "Process Success"
+                
+                $Result += New-Object PSObject -Property @{
+                Result     = "Process Success";
+                TicketInfo = $Ticket;
+                }
+                Return $Result
             }
 
 
@@ -747,7 +843,12 @@ function Invoke-TicketProcess
 Jira Issue: $($Worklog.issue.key)
 Customfield_10313 Value: $($Issue.customfield_10313)
 "@ 
-                Return "BAD CW TICKET VALUE"
+
+                $Result += New-Object PSObject -Property @{
+                Result     = "BAD CW TICKET VALUE";
+                TicketInfo = $False;
+                }
+                Return $Result
             }
 
             $CurrentTicket = Get-CWticket -TicketID $($Issue.customfield_10313)
@@ -755,7 +856,12 @@ Customfield_10313 Value: $($Issue.customfield_10313)
             If($CurrentTicket -eq "Bad-Request")
             {
                 Write-log "[*Error*]Unable to retrieve information for CW Ticket $($Issue.customfield_10313)"
-                Return "Process Failure"
+                
+                $Result += New-Object PSObject -Property @{
+                Result     = "Process Failure";
+                TicketInfo = $False;
+                }
+                Return $Result
             }
 
             ElseIf($CurrentTicket.id -ne $Issue.customfield_10313)
@@ -766,7 +872,12 @@ Customfield_10313 Value: $($Issue.customfield_10313)
                 If($Ticket -eq "CW TICKET CREATION FAILED")
                 {
                     Write-Log "Failed to Create CW Ticket for Jira Issue $($Issue.id)"
-                    Return "Process Failure"
+                
+                    $Result += New-Object PSObject -Property @{
+                    Result     = "Process Failure";
+                    TicketInfo = $False;
+                }
+                    Return $Result
                 }
 
                 Write-Log "CW Ticket #$($ticket.id) created."
@@ -776,22 +887,37 @@ Customfield_10313 Value: $($Issue.customfield_10313)
                 If($EditResults -eq "Failed to Set CustomField_10313")
                 {
                     Write-Log "[*Error*]Failed to set customfield_10313 for Jira Issue $($Issue.id). Value should have been $($Ticket.id)."
-                    Return "Process Failure"
+                
+                    $Result += New-Object PSObject -Property @{
+                    Result     = "Process Failure";
+                    TicketInfo = $False;
+                    }
+
+                    Return $Result
                 }
 
                 Else
                 {
                     $issue.customfield_10313 = $Ticket.id 
                     Write-Log "CW Ticket #$($ticket.id) mapped in JIRA."
-                    Return "Process Success"
-                }
+                    $Result += New-Object PSObject -Property @{
+                    Result     = "Process Success";
+                    TicketInfo = $CurrentTicket;
+                    }
+                        Return $Result
+                    }
 
             }
 
             Else
             {
                 Write-Log "CW Ticket #$($Issue.customfield_10313) is already correctly mapped."
-                Return "Process Success"
+                
+                $Result += New-Object PSObject -Property @{
+                Result     = "Process Success";
+                TicketInfo = $CurrentTicket;
+                }
+                Return $Result
             }
         }
     }
@@ -806,20 +932,15 @@ function Invoke-WorklogProcess
         [Parameter(Mandatory = $true,Position = 1,ValueFromPipeline,ValueFromPipelineByPropertyName)]
         [Object]$Worklog,
         [Parameter(Mandatory = $true,Position = 2,ValueFromPipeline,ValueFromPipelineByPropertyName)]
-        [String]$ClosedStatus
+        [String]$ClosedStatus,
+        [Parameter(Mandatory = $true,Position = 3,ValueFromPipeline,ValueFromPipelineByPropertyName)]
+        [Object]$Ticket
+
     )
 
     Process
     {
         [ARRAY]$NewTimeEntries = @()
-
-        $Ticket = Get-cwticket -TicketID $($Issue.customfield_10313)
-
-        If($Ticket -eq "Bad-Request")
-        {
-            Write-log "[*Error*]Unable to retrieve information for CW Ticket $($Issue.customfield_10313)"
-            continue;
-        }
 
         #Check if the starting status of the CW Ticket is closed and set a flag for later so we set it back.
         If($Ticket.status.name -eq $ClosedStatus)
@@ -852,13 +973,31 @@ function Invoke-WorklogProcess
             {
                 [Bool]$Present = $False
                 $ErrorActionPreference = 'SilentlyContinue'
-                $RegCheck = ([regex]::matches($Detail.internalnotes, "(?:\[JiraID!!)(.*)(?:!!)")).groups[1].value   
-                $ErrorActionPreference = 'Continue'
-
-                If($($Worklog.id) -eq $RegCheck)
+                $PresentRegCheck = ([regex]::matches($Detail.internalnotes, "(?:\[JiraID!!)(\d+)(?:!!)")).groups[1].value
+                   
+                If($($Worklog.id) -eq $PresentRegCheck)
                 {
                     [Bool]$Present = $True
-                    break;
+                    $SecondsRegCheck = ([regex]::matches($Detail.internalnotes, "(?:TotalSeconds!!)(\d+)(?:!!)")).groups[1].value
+                
+                    If($SecondsRegCheck -eq $Null -or $SecondsRegCheck -eq "")
+                    {
+                        $AccurateTime = $Missing
+                        break;
+                    }
+
+                    ElseIf($SecondsRegCheck -eq $($Worklog.timespentseconds))
+                    {
+                        $AccurateTime = $True
+                        break;
+                    }
+
+                    Else
+                    {
+                        $AccurateTime = $False
+                        $MatchingTeID = $($Detail.id)
+                        break;
+                    }
                 }
          
             }
@@ -906,7 +1045,23 @@ function Invoke-WorklogProcess
 
         Else
         {
-            Write-Log "Jira Time Entry ID #$($Worklog.id) is already logged." 
+            If($AccurateTime -eq $Missing)
+            {
+                Write-Log "Jira Time Entry ID #$($Worklog.id) is old and does not have total seconds logged."
+            }
+
+
+            ElseIf($AccurateTime -eq $True)
+            {
+                Write-Log "Jira Time Entry ID #$($Worklog.id) is already logged."    
+            }
+            
+            Else
+            {
+                Write-Log "Jira Time Entry ID #$($Worklog.id) has an incorrect amount of time logged. Attempting to fix."
+                $EditResults = Edit-CWTimeEntry -WorkLog $Worklog -TimeEntryID $MatchingTeID
+                Write-Log "Jira Time Entry ID #$($Worklog.id) now has $($EditResults.actualhours) hours logged." 
+            }
         }
     }
 }
@@ -1206,7 +1361,7 @@ Foreach($User in $arrUsernames)
             {
                 $ITP_Result = Invoke-TicketProcess -Issue $Issue -Boardname $Boardname -Key $($Worklog.issue.key) -Worklog $Worklog
 
-                If($ITP_Result -eq 'Process Failure' -or $ITP_Result -eq "BAD CW TICKET VALUE")
+                If($($ITP_Result.result) -eq 'Process Failure' -or $($ITP_Result.result) -eq "BAD CW TICKET VALUE")
                 {
                     Write-Log "[*Error*]Failure processing Worklog for User: $User | Issue : $($worklog.issue.id)"
                     continue;                
@@ -1214,7 +1369,7 @@ Foreach($User in $arrUsernames)
 
                 Else
                 {
-                    Invoke-WorklogProcess -Issue $Issue -Worklog $Worklog -ClosedStatus $ClosedStatus
+                    Invoke-WorklogProcess -Issue $Issue -Worklog $Worklog -ClosedStatus $ClosedStatus -Ticket $($ITP_Result.TicketInfo)
             
                     #Close the ticket in CW if its closed in Jira
                     If($Issue.status.name -eq 'Closed')
