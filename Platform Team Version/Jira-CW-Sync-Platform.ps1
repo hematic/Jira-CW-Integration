@@ -1271,16 +1271,16 @@ Remove-Item $LogFilePath -Force -ErrorAction 'SilentlyContinue'
 
 #Jira Credentials
 $Global:JiraInfo = New-Object PSObject -Property @{
-User = 'cwintegrator'
-Password = 'kaRnFYpCYEZ9LQQ'
+    User = 'cwintegrator'
+    Password = 'kaRnFYpCYEZ9LQQ'
 }
 $JiraCredentials = Set-JiraCreds
 
 #CW Credentials
 $Global:CWInfo = New-Object PSObject -Property @{
-Company = 'connectwise'
-PublicKey = '4hc35v3aNRTjib9W'
-PrivateKey = 'yLubF4Kfz4gWKBzU'
+    Company = 'connectwise'
+    PublicKey = '4hc35v3aNRTjib9W'
+    PrivateKey = 'yLubF4Kfz4gWKBzU'
 }
 [string]$Authstring  = $CWInfo.company + '+' + $CWInfo.publickey + ':' + $CWInfo.privatekey
 $encodedAuth = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(($Authstring)));
