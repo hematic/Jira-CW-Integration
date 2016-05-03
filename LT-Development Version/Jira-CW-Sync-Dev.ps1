@@ -12,8 +12,8 @@ Function Set-JiraCreds
 
 Function Get-FilterResults
 {
-    #$RestApiURI = $JiraServerRoot + "rest/api/2/search?jql=project%20in%20(SDT%2C%20PTC%2C%20LTC)%20AND%20status%20in%20(Closed%2C%20`"Dev%20Queue`"%2C%20`"QA%20Queue`"%2C%20Passed)%20AND%20updated%20>%20-1d%20ORDER%20BY%20updated%20ASC&maxResults=$Global:MaxResults"
-    $RestApiURI = $JiraServerRoot + "rest/api/2/search?jql=project%20in%20(SDT%2C%20PTC%2C%20LTC)%20AND%20status%20in%20(Closed%2C%20`"Dev%20Queue`"%2C%20`"QA%20Queue`"%2C%20Passed)&maxResults=$Global:MaxResults"
+    $RestApiURI = $JiraServerRoot + "rest/api/2/search?jql=project%20in%20(SDT%2C%20PTC%2C%20LTC)%20AND%20status%20in%20(Closed%2C%20`"Dev%20Queue`"%2C%20`"QA%20Queue`"%2C%20Passed)%20AND%20updated%20>%20-1d%20ORDER%20BY%20updated%20ASC&maxResults=$Global:MaxResults"
+    #$RestApiURI = $JiraServerRoot + "rest/api/2/search?jql=project%20in%20(SDT%2C%20PTC%2C%20LTC)%20AND%20status%20in%20(Closed%2C%20`"Dev%20Queue`"%2C%20`"QA%20Queue`"%2C%20Passed)&maxResults=$Global:MaxResults"
     $JSONResponse = Invoke-RestMethod -Uri $restapiuri -Headers @{ "Authorization" = "Basic $JiraCredentials" } -ContentType application/json -Method Get
 
     #If there are an extremely large number of tickets returned PowerShell will fail to parse them to a PSCustomObject.
@@ -61,7 +61,7 @@ Function Get-CWTicket
 
     Begin
     {
-    [string]$BaseUri     = "$CWServerRoot" + "v4_6_Release/apis/3.0/service/tickets/$ticketID"
+    [string]$BaseUri     = "$CWServerRoot" + "$Codebase" + "apis/3.0/service/tickets/$ticketID"
     [string]$Accept      = "application/vnd.connectwise.com+json; version=v2015_3"
     [string]$ContentType = "application/json"
 
@@ -110,7 +110,10 @@ Function Change-CWTicketStatus
 		[INT]$TicketID,
     	[Parameter(Mandatory = $True,Position = 1,ValueFromPipeline,ValueFromPipelineByPropertyName)]
         [ValidateNotNullorEmpty()]
-		[Int]$StatusID
+		[Int]$StatusID,
+    	[Parameter(Mandatory = $True,Position = 2,ValueFromPipeline,ValueFromPipelineByPropertyName)]
+        [ValidateNotNullorEmpty()]
+		[String]$JiraKey
     )
 
     Begin
@@ -129,6 +132,9 @@ Function Change-CWTicketStatus
             [
             {
                 "op" : "replace", "path": "/status/id", "value": "$StatusID"
+            },
+            {
+                "op" : "replace", "path": "/customFields/10/value", "value": "$JiraKey"
             }
             ]
 "@
@@ -173,7 +179,9 @@ Function Check-Mapping
         [String]$JiraStatus,
         [Parameter(Mandatory = $True,Position = 2)]
         [Int]$CWTicketID,
-		[Parameter(Mandatory = $False,Position = 3)]
+        [Parameter(Mandatory = $True,Position = 3)]
+        [String]$JiraKey,
+		[Parameter(Mandatory = $False,Position = 4)]
         [String]$Resolution
 
 	)
@@ -182,7 +190,7 @@ Function Check-Mapping
         {
             write-log "Status: $($Issue.fields.status.name)"
             Write-log "CW Ticket Status: $CWStatus"
-            $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $SDT_In_Progress
+            $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $SDT_In_Progress -JiraKey $JiraKey
             Return $StatusChangeResult
         }
 
@@ -190,7 +198,7 @@ Function Check-Mapping
         {
             write-log "Status: $($Issue.fields.status.name)"
             Write-log "CW Ticket Status: $CWStatus"
-            $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $SDT_In_Progress
+            $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $SDT_In_Progress -JiraKey $JiraKey
             Return $StatusChangeResult
         }
 
@@ -198,7 +206,7 @@ Function Check-Mapping
         {
             write-log "Status: $($Issue.fields.status.name)"
             Write-log "CW Ticket Status: $CWStatus"
-            $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $Dev_Pending_Fix
+            $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $Dev_Pending_Fix -JiraKey $JiraKey
             Return $StatusChangeResult
         }
 
@@ -206,7 +214,7 @@ Function Check-Mapping
         {
             write-log "Status: $($Issue.fields.status.name)"
             Write-log "CW Ticket Status: $CWStatus"
-            $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $Dev_Pending_Fix
+            $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $Dev_Pending_Fix -JiraKey $JiraKey
             Return $StatusChangeResult
         }
 
@@ -214,7 +222,7 @@ Function Check-Mapping
         {
             write-log "Status: $($Issue.fields.status.name)"
             Write-log "CW Ticket Status: $CWStatus"
-            $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $QA_Pending_Fix_Validation
+            $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $QA_Pending_Fix_Validation -JiraKey $JiraKey
             Return $StatusChangeResult
         }
 
@@ -222,7 +230,7 @@ Function Check-Mapping
         {
             write-log "Status: $($Issue.fields.status.name)"
             Write-log "CW Ticket Status: $CWStatus"
-            $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $QA_Testing
+            $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $QA_Testing -JiraKey $JiraKey
             Return $StatusChangeResult
         }
 
@@ -230,7 +238,7 @@ Function Check-Mapping
         {
             write-log "Status: $($Issue.fields.status.name)"
             Write-log "CW Ticket Status: $CWStatus"
-            $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $QA_Fix_Passed
+            $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $QA_Fix_Passed -JiraKey $JiraKey
             Return $StatusChangeResult
         }
 
@@ -238,7 +246,7 @@ Function Check-Mapping
         {
             write-log "Status: $($Issue.fields.status.name)"
             Write-log "CW Ticket Status: $CWStatus"
-            $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $QA_Fix_Failed
+            $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $QA_Fix_Failed -JiraKey $JiraKey
             Return $StatusChangeResult
         }
 
@@ -246,7 +254,7 @@ Function Check-Mapping
         {
             write-log "Status: $($Issue.fields.status.name)"
             Write-log "CW Ticket Status: $CWStatus"
-            $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $Released
+            $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $Released -JiraKey $JiraKey
             Return $StatusChangeResult
         }
 
@@ -254,7 +262,7 @@ Function Check-Mapping
         {
             write-log "Status: $($Issue.fields.status.name)"
             Write-log "CW Ticket Status: $CWStatus"
-            $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $SDT_Closed_Unapproved
+            $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $SDT_Closed_Unapproved -JiraKey $JiraKey
             Return $StatusChangeResult
         }
 
@@ -262,7 +270,7 @@ Function Check-Mapping
         {
             write-log "Status: $($Issue.fields.status.name)"
             Write-log "CW Ticket Status: $CWStatus"
-            $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $Dev_Rework_Fix
+            $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $Dev_Rework_Fix -JiraKey $JiraKey
             Return $StatusChangeResult
         }
 
@@ -270,7 +278,7 @@ Function Check-Mapping
         {
             write-log "Status: $($Issue.fields.status.name)"
             Write-log "CW Ticket Status: $CWStatus"
-            $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $SDT_In_Progress
+            $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $SDT_In_Progress -JiraKey $JiraKey
             Return $StatusChangeResult
         }
 
@@ -411,7 +419,7 @@ Function Process-Issues
     }
     If($Resolution)
     {
-        $MappingResults = Check-Mapping -CWStatus $CWStatus -JiraStatus $JiraStatus -CWTicketID $Jira_CWTicket_CF_Value -Resolution $Resolution
+        $MappingResults = Check-Mapping -CWStatus $CWStatus -JiraStatus $JiraStatus -CWTicketID $Jira_CWTicket_CF_Value -JiraKey $($Issue.key) -Resolution $Resolution
         If($MappingResults -eq "Status Change Failed")
         {
             Return $MappingResults
@@ -420,7 +428,7 @@ Function Process-Issues
 
     Else
     {
-        $MappingResults = Check-Mapping -CWStatus $CWStatus -JiraStatus $JiraStatus -CWTicketID $Jira_CWTicket_CF_Value
+        $MappingResults = Check-Mapping -CWStatus $CWStatus -JiraStatus $JiraStatus -CWTicketID $Jira_CWTicket_CF_Value -JiraKey $($Issue.key)
         If($MappingResults -eq "Status Change Failed")
         {
             Return $MappingResults
@@ -490,8 +498,14 @@ Function Output-Exception
 #Variable Declarations
 $ErrorActionPreference = 'Continue'
 $VerbosePreference = 'SilentlyContinue'
-[String]$CWServerRoot = "https://idev.connectwisedev.com/"
-[String]$JiraServerRoot = "https://jira-dev-clone.labtechsoftware.com/"
+
+#For use when testing in dev
+#[String]$CWServerRoot = "https://idev.connectwisedev.com/"
+#[String]$JiraServerRoot = "https://jira-dev-clone.labtechsoftware.com/"
+
+[String]$CWServerRoot = "https://api-na.myconnectwise.net/"
+[String]$CodeBase = (Invoke-RestMethod -uri 'http://api-na.myconnectwise.net/login/companyinfo/connectwise').codebase
+[String]$JiraServerRoot = "https://jira.labtechsoftware.com/"
 [String]$LogFilePath = "C:\Scheduled Tasks\Logs\Jira-CW-Dev-Team.txt"
 Remove-Item $LogFilePath -Force -ErrorAction 'SilentlyContinue'
 
@@ -530,14 +544,13 @@ $encodedAuth = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(($Auths
 #Gather the list of tickets to act upon from the JIRA API.
 $JiraData = Get-FilterResults
 
-If($($RawData.GetType().fullname -ne 'System.Management.Automation.PSCustomObject'))
+If($($JiraData.GetType().fullname -ne 'System.Management.Automation.PSCustomObject'))
 {
-    $Jiradata = ConvertFrom-Json2 -InputObject $RawData
+    $Jiradata = ConvertFrom-Json2 -InputObject $Jiradata
     [Bool]$Global:Parsed = $True
 }
 
-#We loop through each issue and process them as needed. Some filtering could be done here to ONLY loop through
-#the issues with the statuses we know we need to touch, but i didn't put in the effort. I feel bad.
+#We loop through each issue and process them as needed.
 
 Foreach($Issue in $($JiraData.issues))
 {
