@@ -188,7 +188,7 @@ Function Check-Mapping
 
         If($JiraStatus -eq "SDT Queue" -and $CWStatus -ne "SDT-In Progress")
         {
-            write-log "Status: $($Issue.fields.status.name)"
+            write-log "Status: $Jirastatus"
             Write-log "CW Ticket Status: $CWStatus"
             $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $SDT_In_Progress -JiraKey $JiraKey
             Return $StatusChangeResult
@@ -196,7 +196,7 @@ Function Check-Mapping
 
         ElseIf($JiraStatus -eq "Check-in Ready" -and $CWStatus -ne "SDT-In Progress")
         {
-            write-log "Status: $($Issue.fields.status.name)"
+            write-log "Status: $Jirastatus"
             Write-log "CW Ticket Status: $CWStatus"
             $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $SDT_In_Progress -JiraKey $JiraKey
             Return $StatusChangeResult
@@ -204,7 +204,7 @@ Function Check-Mapping
 
         ElseIf($JiraStatus -eq "Dev Queue" -and $CWStatus -ne "DEV-Pending Fix")
         {
-            write-log "Status: $($Issue.fields.status.name)"
+            write-log "Status: $Jirastatus"
             Write-log "CW Ticket Status: $CWStatus"
             $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $Dev_Pending_Fix -JiraKey $JiraKey
             Return $StatusChangeResult
@@ -212,7 +212,7 @@ Function Check-Mapping
 
         ElseIf($JiraStatus -eq "Build Ready" -and $CWStatus -ne "DEV-Pending Fix")
         {
-            write-log "Status: $($Issue.fields.status.name)"
+            write-log "Status: $Jirastatus"
             Write-log "CW Ticket Status: $CWStatus"
             $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $Dev_Pending_Fix -JiraKey $JiraKey
             Return $StatusChangeResult
@@ -220,7 +220,7 @@ Function Check-Mapping
 
         ElseIf($JiraStatus -eq "QA Assign" -and $CWStatus -ne "QA-Pending Fix Validation")
         {
-            write-log "Status: $($Issue.fields.status.name)"
+            write-log "Status: $Jirastatus"
             Write-log "CW Ticket Status: $CWStatus"
             $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $QA_Pending_Fix_Validation -JiraKey $JiraKey
             Return $StatusChangeResult
@@ -228,7 +228,7 @@ Function Check-Mapping
 
         ElseIf($JiraStatus -eq "QA Queue" -and $CWStatus -ne "QA-Testing")
         {
-            write-log "Status: $($Issue.fields.status.name)"
+            write-log "Status: $Jirastatus"
             Write-log "CW Ticket Status: $CWStatus"
             $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $QA_Testing -JiraKey $JiraKey
             Return $StatusChangeResult
@@ -236,7 +236,7 @@ Function Check-Mapping
 
         ElseIf($JiraStatus -eq "Passed" -and $CWStatus -ne "QA-Fix Passed")
         {
-            write-log "Status: $($Issue.fields.status.name)"
+            write-log "Status: $Jirastatus"
             Write-log "CW Ticket Status: $CWStatus"
             $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $QA_Fix_Passed -JiraKey $JiraKey
             Return $StatusChangeResult
@@ -244,7 +244,7 @@ Function Check-Mapping
 
         ElseIf($JiraStatus -eq "Failed" -and $CWStatus -ne "QA-Fix Failed")
         {
-            write-log "Status: $($Issue.fields.status.name)"
+            write-log "Status: $Jirastatus"
             Write-log "CW Ticket Status: $CWStatus"
             $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $QA_Fix_Failed -JiraKey $JiraKey
             Return $StatusChangeResult
@@ -252,7 +252,7 @@ Function Check-Mapping
 
         ElseIf($JiraStatus -eq "Closed" -and $Resolution -eq "Done" -and $CWStatus -ne "Released")
         {
-            write-log "Status: $($Issue.fields.status.name)"
+            write-log "Status: $Jirastatus"
             Write-log "CW Ticket Status: $CWStatus"
             $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $Released -JiraKey $JiraKey
             Return $StatusChangeResult
@@ -260,7 +260,7 @@ Function Check-Mapping
 
         ElseIf($JiraStatus -eq "Closed" -and $Resolution -ne "Done" -and $CWStatus -ne "SDT-Closed Unapproved")
         {
-            write-log "Status: $($Issue.fields.status.name)"
+            write-log "Status: $Jirastatus"
             Write-log "CW Ticket Status: $CWStatus"
             $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $SDT_Closed_Unapproved -JiraKey $JiraKey
             Return $StatusChangeResult
@@ -268,7 +268,7 @@ Function Check-Mapping
 
         ElseIf($JiraStatus -eq "Reopened" -and $CWStatus -ne "Dev-Rework Fix")
         {
-            write-log "Status: $($Issue.fields.status.name)"
+            write-log "Status: $Jirastatus"
             Write-log "CW Ticket Status: $CWStatus"
             $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $Dev_Rework_Fix -JiraKey $JiraKey
             Return $StatusChangeResult
@@ -276,15 +276,23 @@ Function Check-Mapping
 
         ElseIf($JiraStatus -eq "Confirm Resolution" -and $CWStatus -ne "SDT-In Progress")
         {
-            write-log "Status: $($Issue.fields.status.name)"
+            write-log "Status: $Jirastatus"
             Write-log "CW Ticket Status: $CWStatus"
             $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $SDT_In_Progress -JiraKey $JiraKey
             Return $StatusChangeResult
         }
 
+        ElseIf($Jirastatus -eq "Doc Queue" -and $CWStatus -ne "QA-Fix Passed")
+        {
+            write-log "Status: $Jirastatus"
+            Write-log "CW Ticket Status: $CWStatus"
+            $StatusChangeResult = Change-CWTicketStatus -TicketID $CWTicketID -StatusID $QA_Fix_Passed -JiraKey $JiraKey
+            Return $StatusChangeResult        
+        }
+
         Else
         {
-            write-log "Status: $($Issue.fields.status.name)"
+            write-log "Status: $Jirastatus"
             Write-log "CW Ticket Status: $CWStatus"
             Write-log "Ticket was already mapped correctly."
             Return "Ticket was already mapped correctly."
@@ -505,7 +513,7 @@ $VerbosePreference = 'SilentlyContinue'
 
 [String]$CWServerRoot = "https://api-na.myconnectwise.net/"
 [String]$CodeBase = (Invoke-RestMethod -uri 'http://api-na.myconnectwise.net/login/companyinfo/connectwise').codebase
-[String]$JiraServerRoot = "https://jira.labtechsoftware.com/"
+[String]$JiraServerRoot = "https://jira-dev.labtechsoftware.com/"
 [String]$LogFilePath = "C:\Scheduled Tasks\Logs\Jira-CW-Dev-Team.txt"
 Remove-Item $LogFilePath -Force -ErrorAction 'SilentlyContinue'
 
@@ -534,7 +542,7 @@ Password = '@#WE23we4'
 $JiraCredentials = Set-JiraCreds
 
 $Global:CWInfo = New-Object PSObject -Property @{
-Company = 'idev'
+Company = 'connectwise'
 PublicKey = '4hc35v3aNRTjib9W'
 PrivateKey = 'yLubF4Kfz4gWKBzU'
 }
